@@ -42,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     p_ag.add_argument("--depth", type=int, default=1, help=">1 runs the multi-turn beam")
     p_ag.add_argument("--beam", type=int, default=3, help="beam width (multi-turn)")
     p_ag.add_argument("--proposals", type=int, default=2, help="proposals per beam (multi-turn)")
+    p_ag.add_argument("--runs", type=int, default=1, help="run the beam N times (stochastic) to mine several vectors")
     p_ref = sub.add_parser("refine", parents=[common], help="feedback-driven payload refinement -> validated vector library")
     p_ref.add_argument("--scenario", default="ransomware_injection")
     p_ref.add_argument("--model", default=None, help="override target model")
@@ -58,6 +59,13 @@ def main(argv: list[str] | None = None) -> int:
     p_sw.add_argument("--scenario", default="ransomware_injection")
     p_sw.add_argument("--models", required=True, help="comma-separated target models")
     p_sw.add_argument("--attacks", type=int, default=8, help="number of attacks to generate once and reuse")
+    p_rm = sub.add_parser("refine-manual", parents=[common], help="refine an attack using the REAL arena's response (human-in-the-loop)")
+    p_rm.add_argument("--scenario", required=True)
+    p_rm.add_argument("--response-file", required=True, help="text file with the arena model's actual response")
+    p_rm.add_argument("--prev-file", default=None, help="text file with the attack you submitted (default: last saved vector)")
+    p_rm.add_argument("--note", default="", help="what happened / what to fix (you are the oracle)")
+    p_rm.add_argument("--attacker-model", default=None)
+    p_rm.add_argument("--proposals", type=int, default=3)
     p_bench = sub.add_parser("bench", parents=[common], help="headline: single-turn vs multi-turn across target models")
     p_bench.add_argument("--scenario", default="hotel_booking")
     p_bench.add_argument("--models", required=True, help="comma-separated target model ids (bare org/model = featherless)")
@@ -90,6 +98,8 @@ def main(argv: list[str] | None = None) -> int:
         return _agentic(cfg, args)
     if args.cmd == "refine":
         return _refine(cfg, args)
+    if args.cmd == "refine-manual":
+        return _refine_manual(cfg, args)
     if args.cmd == "replay-vectors":
         return _replay(cfg, args)
     if args.cmd == "sweep-models":
@@ -153,6 +163,39 @@ def _gate_eval(cfg: Config, sample: int) -> int:
     return 0
 
 
+def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
+               needs_review: bool):
+    """Run a beam `args.runs` times (stochastic -> different vectors each run),
+    saving every solved vector to the library. Returns (runs_solved, vectors_saved)."""
+    import json
+    from pathlib import Path
+
+    from mta.search.agentic_loop import save_beam_vector
+
+    base_seed = cfg.seed
+    n_solved = saved = 0
+    for i in range(args.runs):
+        cfg.seed = base_seed + i  # vary the attacker's strategy sampling per run
+        cand_path = Path(cfg.runs_dir) / f"{file_prefix}_{args.scenario}.jsonl"
+        cand_path.parent.mkdir(parents=True, exist_ok=True)
+        fh = cand_path.open("w")
+        result = asyncio.run(runner(
+            cfg, scenario, beam_width=args.beam, depth=args.depth, n_proposals=args.proposals,
+            on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
+        ))
+        fh.close()
+        tag = f"[run {i + 1}/{args.runs}] "
+        print(tag + result.summary().replace("\n", "\n" + " " * len(tag)))
+        if result.solved:
+            n_solved += 1
+            lib = save_beam_vector(result, cfg.target.model, Path("data/vectors"),
+                                   kind=kind, needs_review=needs_review)
+            if lib:
+                saved += 1
+    cfg.seed = base_seed
+    return n_solved, saved
+
+
 def _agentic(cfg: Config, args) -> int:
     from mta.scenarios import get_scenario
     from mta.search.agentic_loop import (
@@ -177,48 +220,23 @@ def _agentic(cfg: Config, args) -> int:
     if getattr(scenario, "kind", "") == "chat_content":
         if args.depth > 1:
             from mta.search.agentic_loop import run_content_beam
-            cand_path = Path(cfg.runs_dir) / f"content_beam_{args.scenario}.jsonl"
-            cand_path.parent.mkdir(parents=True, exist_ok=True)
-            fh = cand_path.open("w")
-            result = asyncio.run(run_content_beam(
-                cfg, scenario, beam_width=args.beam, depth=args.depth, n_proposals=args.proposals,
-                on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
-            ))
-            fh.close()
-            print(result.summary())
-            if result.solved:
-                from mta.search.agentic_loop import save_beam_vector
-                lib = save_beam_vector(result, cfg.target.model, Path("data/vectors"),
-                                       kind="chat_content", needs_review=True)
-                if lib:
-                    print(f"candidate vector saved to {lib}")
-            print("\nNOTE: content scenarios are fuzzy-judged (LLM rubric, ~15% FPR). A "
-                  f"'solved' here is a CANDIDATE -- review the transcript in {cand_path} "
-                  "before treating it as a real break.")
-            return 0 if result.solved else 2
+            n_solved, saved = _mine_beam(cfg, scenario, args, run_content_beam,
+                                         "content_beam", "chat_content", needs_review=True)
+            print(f"\n{n_solved}/{args.runs} run(s) solved; {saved} candidate vector(s) saved.")
+            print("NOTE: content scenarios are fuzzy-judged (LLM rubric, ~15% FPR). Each "
+                  "'solved' is a CANDIDATE -- review the transcript before treating it as a break.")
+            return 0 if n_solved else 2
         from mta.search.agentic_loop import run_content_scenario, write_attempts
         result = asyncio.run(run_content_scenario(cfg, scenario, args.attempts))
         write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
         print(result.summary())
         return 0 if result.solved else 2
     if args.depth > 1:
-        cand_path = Path(cfg.runs_dir) / f"agentic_beam_{args.scenario}.jsonl"
-        cand_path.parent.mkdir(parents=True, exist_ok=True)
-        fh = cand_path.open("w")
-        result = asyncio.run(run_agentic_beam(
-            cfg, scenario, beam_width=args.beam, depth=args.depth,
-            n_proposals=args.proposals,
-            on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
-        ))
-        fh.close()
-        print(result.summary())
-        if result.solved:
-            from mta.search.agentic_loop import save_beam_vector
-            lib = save_beam_vector(result, cfg.target.model, Path("data/vectors"),
-                                   kind="agentic", needs_review=False)
-            if lib:
-                print(f"vector saved to {lib} (verifiable judge -- trustworthy)")
-        return 0 if result.solved else 2
+        n_solved, saved = _mine_beam(cfg, scenario, args, run_agentic_beam,
+                                     "agentic_beam", "agentic", needs_review=False)
+        print(f"\n{n_solved}/{args.runs} run(s) solved; {saved} vector(s) saved "
+              "(verifiable judge -- trustworthy).")
+        return 0 if n_solved else 2
 
     result = asyncio.run(run_agentic_single(cfg, scenario, args.attempts))
     write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
@@ -264,6 +282,47 @@ def _sweep_models(cfg: Config, args) -> int:
     out = write_report(matrix, Path(cfg.reports_dir))
     print(matrix.markdown())
     print(f"\nreport: {out}")
+    return 0
+
+
+def _refine_manual(cfg: Config, args) -> int:
+    from mta.eval.bench import normalize_model
+    from mta.eval.replay import load_vectors
+    from mta.scenarios import get_scenario
+    from mta.search.agentic_loop import run_refine_manual
+    from pathlib import Path
+    import json
+    import time
+
+    scenario = get_scenario(args.scenario)
+    if args.attacker_model:
+        cfg.attacker_model = normalize_model(args.attacker_model)
+
+    # the attack you submitted: explicit file, else the last saved vector
+    if args.prev_file:
+        prev = Path(args.prev_file).read_text().strip()
+    else:
+        vecs = load_vectors(args.scenario, limit=1)
+        if not vecs:
+            print(f"no --prev-file and no saved vector in data/vectors/{args.scenario}.jsonl")
+            return 1
+        v = vecs[0]
+        prev = (v.get("turns") or [v.get("payload", "")])[-1]
+    arena_response = Path(args.response_file).read_text().strip()
+
+    variants = asyncio.run(run_refine_manual(
+        cfg, scenario, prev, arena_response, args.note, args.proposals))
+
+    out = Path(cfg.runs_dir) / f"refine_manual_{args.scenario}.jsonl"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("a") as fh:
+        for i, variant in enumerate(variants):
+            print(f"\n--- refined variant {i} ---\n{variant}")
+            fh.write(json.dumps({"scenario": args.scenario, "prev": prev,
+                                 "arena_response": arena_response, "note": args.note,
+                                 "variant": variant, "ts": time.strftime("%Y-%m-%dT%H:%M:%S")}) + "\n")
+    print(f"\n{len(variants)} refined variant(s) written to {out}. Submit them to the "
+          "arena and bring the responses back to refine again.")
     return 0
 
 

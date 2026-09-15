@@ -108,6 +108,9 @@ class Config(BaseModel):
     # model so the attacker actually generates the attacks.
     attacker_model: str = ""
     attacker_disable_thinking: bool = False
+    # Reasoning attackers (e.g. Qwen3-235B) spend output budget on thinking; a
+    # small cap leaves the actual attack empty. Keep this generous.
+    attacker_max_tokens: int = 2048
     behaviors_path: Path = Path("data/behaviors/objectives.jsonl")
     runs_dir: Path = Path("data/runs")
     reports_dir: Path = Path("reports")

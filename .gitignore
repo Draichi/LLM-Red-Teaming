@@ -9,6 +9,8 @@ build/
 # Large / generated data and run artifacts — keep the harness, not the payloads.
 data/calibration/*.json
 data/calibration/*.csv
+# Arena response transcripts (real Gray Swan content) -- the user's work product.
+data/calibration/*.txt
 data/runs/*.jsonl
 # Validated attack vectors: the user's red-teaming work product, never versioned.
 data/vectors/

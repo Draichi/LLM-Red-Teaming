@@ -67,6 +67,7 @@ class LLMProposer:
         # uninhibited model so it doesn't refuse to craft attacks.
         self._model = cfg.resolved_attacker_model
         self._thinking_off = cfg.attacker_disable_thinking
+        self._max_tokens = cfg.attacker_max_tokens
         import litellm
 
         self._litellm = litellm
@@ -111,7 +112,7 @@ class LLMProposer:
             f"Write an IMPROVED payload that fixes these specific problems. "
             f"Output only the payload text, nothing else."
         )
-        kwargs = self._attacker_kwargs(_ATTACKER_SYSTEM, user, max_tokens=512)
+        kwargs = self._attacker_kwargs(_ATTACKER_SYSTEM, user, max_tokens=self._max_tokens)
         async with self._sem:
             resp = await self._litellm.acompletion(**kwargs)
         return strip_meta(resp.choices[0].message.content or "")
@@ -125,7 +126,7 @@ class LLMProposer:
             f"Strategy to apply: {strategy.label} -- {strategy.description}\n\n"
             f"Write the next user turn."
         )
-        kwargs = self._attacker_kwargs(_ATTACKER_SYSTEM, user, max_tokens=512)
+        kwargs = self._attacker_kwargs(_ATTACKER_SYSTEM, user, max_tokens=self._max_tokens)
         async with self._sem:
             resp = await self._litellm.acompletion(**kwargs)
         return strip_meta(resp.choices[0].message.content or "")
