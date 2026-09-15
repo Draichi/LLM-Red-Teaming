@@ -10,6 +10,8 @@ build/
 data/calibration/*.json
 data/calibration/*.csv
 data/runs/*.jsonl
+# Validated attack vectors: the user's red-teaming work product, never versioned.
+data/vectors/
 reports/*.md
 reports/*.png
 reports/*.jsonl

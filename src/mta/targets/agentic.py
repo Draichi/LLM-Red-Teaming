@@ -51,14 +51,22 @@ class AgenticTarget:
 
         self._litellm = litellm
 
+    # Permanent client errors (gated model, bad request, auth, not found) -- no
+    # point retrying these; fail fast so a cross-model sweep skips the model.
+    _PERMANENT = {"BadRequestError", "AuthenticationError", "NotFoundError",
+                  "PermissionDeniedError", "UnsupportedParamsError"}
+
     async def _complete(self, **kwargs):
-        """acompletion with backoff -- survives Featherless concurrency limits so
-        a cross-model bench doesn't crash when a model's unit cost is high."""
+        """acompletion with backoff on transient errors (rate limits) so a
+        cross-model run survives concurrency limits; permanent errors raise
+        immediately so the caller can skip that model."""
         last = None
         for attempt in range(self.max_retries):
             try:
                 return await self._litellm.acompletion(**kwargs)
-            except Exception as e:  # noqa: BLE001 - retry rate-limit / transient
+            except Exception as e:  # noqa: BLE001
+                if type(e).__name__ in self._PERMANENT:
+                    raise
                 last = e
                 await asyncio.sleep(min(2**attempt, 15))
         raise RuntimeError(f"target call failed after {self.max_retries} attempts: {last}")

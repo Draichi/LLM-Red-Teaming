@@ -30,16 +30,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", default=None, help="path to a YAML config")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("calibrate", parents=[common], help="Phase 1: judge calibration + gate")
-    sub.add_parser("sweep", parents=[common], help="offline threshold sweep over the last calibration (no API calls)")
+    sub.add_parser("sweep-threshold", parents=[common], help="offline judge-threshold sweep over the last calibration (no API calls)")
     sub.add_parser("report", parents=[common], help="offline: write the final judge_calibration.md from persisted scores")
     p_gate = sub.add_parser("gate-eval", parents=[common], help="Phase 2: validate the classifier gate (blinding rate + judge-call savings)")
     p_gate.add_argument("--sample", type=int, default=200)
     p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
     p_ag.add_argument("--scenario", default="hotel_booking")
+    p_ag.add_argument("--model", default=None, help="override target model (bare org/model = featherless)")
+    p_ag.add_argument("--attacker-model", default=None, help="override attacker model (use an uninhibited model so it crafts attacks)")
     p_ag.add_argument("--attempts", type=int, default=7, help="single-turn: number of one-shot attacks")
     p_ag.add_argument("--depth", type=int, default=1, help=">1 runs the multi-turn beam")
     p_ag.add_argument("--beam", type=int, default=3, help="beam width (multi-turn)")
     p_ag.add_argument("--proposals", type=int, default=2, help="proposals per beam (multi-turn)")
+    p_ref = sub.add_parser("refine", parents=[common], help="feedback-driven payload refinement -> validated vector library")
+    p_ref.add_argument("--scenario", default="ransomware_injection")
+    p_ref.add_argument("--model", default=None, help="override target model")
+    p_ref.add_argument("--attacker-model", default=None, help="override attacker model")
+    p_ref.add_argument("--rounds", type=int, default=4)
+    p_ref.add_argument("--beam", type=int, default=3)
+    p_ref.add_argument("--proposals", type=int, default=3)
+    p_rep = sub.add_parser("replay-vectors", parents=[common], help="replay the vector library across models -> transfer matrix")
+    p_rep.add_argument("--scenario", default="ransomware_injection")
+    p_rep.add_argument("--models", required=True, help="comma-separated target models")
+    p_rep.add_argument("--limit", type=int, default=None, help="only the N most recent vectors")
+    p_sw = sub.add_parser("sweep-models", parents=[common], help="run the same generated attacks across models -> susceptibility matrix")
+    p_sw.add_argument("--scenario", default="ransomware_injection")
+    p_sw.add_argument("--models", required=True, help="comma-separated target models")
+    p_sw.add_argument("--attacks", type=int, default=8, help="number of attacks to generate once and reuse")
     p_bench = sub.add_parser("bench", parents=[common], help="headline: single-turn vs multi-turn across target models")
     p_bench.add_argument("--scenario", default="hotel_booking")
     p_bench.add_argument("--models", required=True, help="comma-separated target model ids (bare org/model = featherless)")
@@ -62,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "calibrate":
         return _calibrate(cfg)
-    if args.cmd == "sweep":
+    if args.cmd == "sweep-threshold":
         return _sweep(cfg)
     if args.cmd == "report":
         return _report(cfg)
@@ -70,6 +87,12 @@ def main(argv: list[str] | None = None) -> int:
         return _gate_eval(cfg, args.sample)
     if args.cmd == "agentic":
         return _agentic(cfg, args)
+    if args.cmd == "refine":
+        return _refine(cfg, args)
+    if args.cmd == "replay-vectors":
+        return _replay(cfg, args)
+    if args.cmd == "sweep-models":
+        return _sweep_models(cfg, args)
     if args.cmd == "bench":
         return _bench(cfg, args)
     if args.cmd == "single":
@@ -138,6 +161,44 @@ def _agentic(cfg: Config, args) -> int:
     import json
 
     scenario = get_scenario(args.scenario)
+    if getattr(args, "model", None):
+        from mta.eval.bench import normalize_model
+        cfg.target.model = normalize_model(args.model)
+    if getattr(args, "attacker_model", None):
+        from mta.eval.bench import normalize_model
+        cfg.attacker_model = normalize_model(args.attacker_model)
+    if getattr(scenario, "kind", "") == "indirect":
+        from mta.search.agentic_loop import run_indirect_injection, write_attempts
+        result = asyncio.run(run_indirect_injection(cfg, scenario, args.attempts))
+        write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
+        print(result.summary())
+        return 0 if result.solved else 2
+    if getattr(scenario, "kind", "") == "chat_content":
+        if args.depth > 1:
+            from mta.search.agentic_loop import run_content_beam
+            cand_path = Path(cfg.runs_dir) / f"content_beam_{args.scenario}.jsonl"
+            cand_path.parent.mkdir(parents=True, exist_ok=True)
+            fh = cand_path.open("w")
+            result = asyncio.run(run_content_beam(
+                cfg, scenario, beam_width=args.beam, depth=args.depth, n_proposals=args.proposals,
+                on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
+            ))
+            fh.close()
+            print(result.summary())
+            if result.solved:
+                from mta.search.agentic_loop import save_content_vector
+                lib = save_content_vector(result, cfg.target.model, Path("data/vectors"))
+                if lib:
+                    print(f"candidate vector saved to {lib}")
+            print("\nNOTE: content scenarios are fuzzy-judged (LLM rubric, ~15% FPR). A "
+                  f"'solved' here is a CANDIDATE -- review the transcript in {cand_path} "
+                  "before treating it as a real break.")
+            return 0 if result.solved else 2
+        from mta.search.agentic_loop import run_content_scenario, write_attempts
+        result = asyncio.run(run_content_scenario(cfg, scenario, args.attempts))
+        write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
+        print(result.summary())
+        return 0 if result.solved else 2
     if args.depth > 1:
         cand_path = Path(cfg.runs_dir) / f"agentic_beam_{args.scenario}.jsonl"
         cand_path.parent.mkdir(parents=True, exist_ok=True)
@@ -155,6 +216,68 @@ def _agentic(cfg: Config, args) -> int:
     write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
     print(result.summary())
     return 0 if result.solved else 2
+
+
+def _refine(cfg: Config, args) -> int:
+    from mta.eval.bench import normalize_model
+    from mta.scenarios import get_scenario
+    from mta.search.agentic_loop import run_injection_refine, save_vectors
+    from pathlib import Path
+    import json
+
+    scenario = get_scenario(args.scenario)
+    if args.model:
+        cfg.target.model = normalize_model(args.model)
+    if getattr(args, "attacker_model", None):
+        cfg.attacker_model = normalize_model(args.attacker_model)
+    cand_path = Path(cfg.runs_dir) / f"refine_{args.scenario}.jsonl"
+    cand_path.parent.mkdir(parents=True, exist_ok=True)
+    fh = cand_path.open("w")
+    result = asyncio.run(run_injection_refine(
+        cfg, scenario, rounds=args.rounds, beam_width=args.beam, n_proposals=args.proposals,
+        on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
+    ))
+    fh.close()
+    lib = save_vectors(result, Path("data/vectors"))
+    print(result.summary())
+    if lib:
+        print(f"validated vectors appended to: {lib}")
+    return 0 if result.solved else 2
+
+
+def _sweep_models(cfg: Config, args) -> int:
+    from mta.eval.replay import run_sweep, write_report
+    from mta.scenarios import get_scenario
+    from pathlib import Path
+
+    scenario = get_scenario(args.scenario)
+    models = [m for m in args.models.split(",") if m.strip()]
+    matrix = asyncio.run(run_sweep(cfg, scenario, models, args.attacks))
+    out = write_report(matrix, Path(cfg.reports_dir))
+    print(matrix.markdown())
+    print(f"\nreport: {out}")
+    return 0
+
+
+def _replay(cfg: Config, args) -> int:
+    from mta.eval.replay import load_vectors, run_content_replay, run_replay, write_report
+    from mta.scenarios import get_scenario
+    from pathlib import Path
+
+    scenario = get_scenario(args.scenario)
+    vectors = load_vectors(args.scenario, limit=args.limit)
+    if not vectors:
+        print(f"no vectors in data/vectors/{args.scenario}.jsonl -- run `mta refine` or the content beam first.")
+        return 1
+    models = [m for m in args.models.split(",") if m.strip()]
+    if getattr(scenario, "kind", "") == "chat_content":
+        matrix = asyncio.run(run_content_replay(cfg, scenario, models, vectors))
+    else:
+        matrix = asyncio.run(run_replay(cfg, scenario, models, vectors))
+    out = write_report(matrix, Path(cfg.reports_dir))
+    print(matrix.markdown())
+    print(f"\nreport: {out}")
+    return 0
 
 
 def _bench(cfg: Config, args) -> int:

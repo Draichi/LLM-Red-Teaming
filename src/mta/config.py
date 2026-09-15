@@ -41,10 +41,11 @@ class TargetConfig(BaseModel):
     temperature: float = 1.0
     max_tokens: int = 1024
     max_concurrency: int = 8
-    # For the target, disabling thinking changes *what you are attacking*. Keep
-    # it explicit; default off-for-speed but flip to False for an honest eval of
-    # a reasoning model's real behavior.
-    disable_thinking: bool = True
+    # Default OFF: sending chat_template_kwargs.enable_thinking to a non-reasoning
+    # model (Mistral, gpt-oss, ...) can corrupt generation (garbage output) since
+    # its template doesn't expect the kwarg. Leave the target as its natural self;
+    # set True only when the specific target is a reasoning model you want sped up.
+    disable_thinking: bool = False
 
 
 class GateConfig(BaseModel):
@@ -99,10 +100,20 @@ class Config(BaseModel):
     target: TargetConfig = Field(default_factory=TargetConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     calibration: CalibrationConfig = Field(default_factory=CalibrationConfig)
+    # Attacker model (generates the attack turns). Empty = reuse the judge model.
+    # A safety-tuned attacker refuses to craft some attacks (violent propaganda,
+    # etc.), weakening the search -- point this at an uninhibited/abliterated
+    # model so the attacker actually generates the attacks.
+    attacker_model: str = ""
+    attacker_disable_thinking: bool = False
     behaviors_path: Path = Path("data/behaviors/objectives.jsonl")
     runs_dir: Path = Path("data/runs")
     reports_dir: Path = Path("reports")
     seed: int = 0
+
+    @property
+    def resolved_attacker_model(self) -> str:
+        return self.attacker_model or self.judge.model
 
     @classmethod
     def load(cls, path: str | Path | None) -> "Config":

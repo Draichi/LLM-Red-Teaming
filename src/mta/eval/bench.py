@@ -15,11 +15,16 @@ from mta.config import Config
 from mta.scenarios.base import Scenario
 from mta.search.agentic_loop import run_agentic_beam, run_agentic_single
 
-_KNOWN_PREFIXES = ("featherless_ai/", "openai/", "anthropic/", "gpt-", "claude-", "vertex_ai/")
+# Featherless-only harness: every `org/model` is a Featherless model, including
+# `openai/<x>` (the Featherless model whose HF org is "openai", e.g.
+# openai/gpt-oss-20b -- NOT the OpenAI API, which is never used here). Only these
+# prefixes are treated as already-routed (an optional frontier Anthropic judge,
+# or an id we built); everything else gets the Featherless prefix.
+_KNOWN_PREFIXES = ("featherless_ai/", "anthropic/", "claude-")
 
 
 def normalize_model(m: str) -> str:
-    """Bare `org/model` -> a Featherless litellm id; known-prefixed ids pass through."""
+    """Bare `org/model` -> a Featherless litellm id; already-routed ids pass through."""
     m = m.strip()
     if m.startswith(_KNOWN_PREFIXES):
         return m

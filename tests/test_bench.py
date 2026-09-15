@@ -5,7 +5,11 @@ def test_normalize_model():
     assert normalize_model("Qwen/Qwen2.5-72B-Instruct") == "featherless_ai/Qwen/Qwen2.5-72B-Instruct"
     assert normalize_model("featherless_ai/x/y") == "featherless_ai/x/y"
     assert normalize_model("anthropic/claude-opus-5") == "anthropic/claude-opus-5"
-    assert normalize_model("gpt-4o") == "gpt-4o"
+    # OpenAI API is never used here: `gpt-*` and `openai/*` are Featherless models
+    assert normalize_model("gpt-4o") == "featherless_ai/gpt-4o"
+    assert normalize_model("openai/gpt-oss-20b") == "featherless_ai/openai/gpt-oss-20b"
+    assert normalize_model("microsoft/phi-2") == "featherless_ai/microsoft/phi-2"
+    assert normalize_model("OBLITERATUS/Qwen3.8-27B-OBLITERATED") == "featherless_ai/OBLITERATUS/Qwen3.8-27B-OBLITERATED"
 
 
 def test_headline_table():
