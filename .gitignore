@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Large / generated data and run artifacts — keep the harness, not the payloads.
+data/calibration/*.json
+data/calibration/*.csv
+data/runs/*.jsonl
+reports/*.md
+reports/*.png
+
+# But keep the placeholder objective file tracked.
+!data/behaviors/objectives.jsonl
