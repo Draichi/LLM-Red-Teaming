@@ -1,12 +1,10 @@
 import json
 
 from mta.eval.replay import ReplayMatrix, load_vectors
-from mta.scenarios.base import ScenarioVerdict
 
 
-def _v(solved, score):
-    return ScenarioVerdict(success=solved, constraint_ok=True, score=score,
-                           reason="", detail={})
+def _c(breaks, trials):
+    return {"breaks": breaks, "trials": trials, "best": 1.0}
 
 
 def test_transfer_matrix_markdown():
@@ -14,17 +12,18 @@ def test_transfer_matrix_markdown():
                {"strategy": "fake_system_channel", "payload": "p1"}]
     models = ["featherless_ai/org/A", "featherless_ai/org/B"]
     cells = {
-        (0, "featherless_ai/org/A"): _v(True, 1.0),
-        (0, "featherless_ai/org/B"): _v(False, 0.4),
-        (1, "featherless_ai/org/A"): _v(True, 1.0),
-        (1, "featherless_ai/org/B"): _v(True, 1.0),
+        (0, "featherless_ai/org/A"): _c(3, 3),   # reliable
+        (0, "featherless_ai/org/B"): _c(0, 3),   # never
+        (1, "featherless_ai/org/A"): _c(3, 3),   # reliable
+        (1, "featherless_ai/org/B"): _c(2, 3),   # reliable (>=50%)
     }
     md = ReplayMatrix("ransomware_injection", models, vectors, cells).markdown()
     assert "Transfer matrix" in md
     assert "delimiter_escape" in md and "fake_system_channel" in md
-    # vector 0 transfers to 1/2, vector 1 to 2/2
-    assert "1/2 |" in md and "2/2 |" in md
-    # per-model summary present
+    assert "3/3" in md and "2/3" in md and "0/3" in md
+    # vector 0 reliable on 1/2 models, vector 1 on 2/2
+    assert "| 1/2 |" in md and "| 2/2 |" in md
+    # per-model reliability summary present
     assert "A 2/2" in md and "B 1/2" in md
 
 

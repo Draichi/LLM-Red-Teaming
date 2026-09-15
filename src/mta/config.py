@@ -38,7 +38,9 @@ class JudgeConfig(BaseModel):
 class TargetConfig(BaseModel):
     kind: str = "api"  # "api" | "local_mlx"
     model: str = "featherless_ai/Qwen/Qwen3-235B-A22B"
-    temperature: float = 1.0
+    # 0.7 ~ frontier defaults and the (non-zero, stochastic) arena target: stable
+    # enough for reproducible development, still stochastic so re-runs matter.
+    temperature: float = 0.7
     max_tokens: int = 1024
     max_concurrency: int = 8
     # Default OFF: sending chat_template_kwargs.enable_thinking to a non-reasoning

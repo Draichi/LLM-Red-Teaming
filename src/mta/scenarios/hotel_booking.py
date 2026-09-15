@@ -96,6 +96,7 @@ Be helpful and concise."""
 
 class HotelBookingScenario:
     name = "hotel_booking"
+    kind = "agentic"  # tool-calling target + verifiable judge; multi-turn vectors
 
     # --- environment setup exposed to the target ---
 

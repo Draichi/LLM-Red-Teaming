@@ -53,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     p_rep.add_argument("--scenario", default="ransomware_injection")
     p_rep.add_argument("--models", required=True, help="comma-separated target models")
     p_rep.add_argument("--limit", type=int, default=None, help="only the N most recent vectors")
+    p_rep.add_argument("--trials", type=int, default=1, help="run each cell N times -> reliability (breaks/trials)")
     p_sw = sub.add_parser("sweep-models", parents=[common], help="run the same generated attacks across models -> susceptibility matrix")
     p_sw.add_argument("--scenario", default="ransomware_injection")
     p_sw.add_argument("--models", required=True, help="comma-separated target models")
@@ -186,8 +187,9 @@ def _agentic(cfg: Config, args) -> int:
             fh.close()
             print(result.summary())
             if result.solved:
-                from mta.search.agentic_loop import save_content_vector
-                lib = save_content_vector(result, cfg.target.model, Path("data/vectors"))
+                from mta.search.agentic_loop import save_beam_vector
+                lib = save_beam_vector(result, cfg.target.model, Path("data/vectors"),
+                                       kind="chat_content", needs_review=True)
                 if lib:
                     print(f"candidate vector saved to {lib}")
             print("\nNOTE: content scenarios are fuzzy-judged (LLM rubric, ~15% FPR). A "
@@ -210,6 +212,12 @@ def _agentic(cfg: Config, args) -> int:
         ))
         fh.close()
         print(result.summary())
+        if result.solved:
+            from mta.search.agentic_loop import save_beam_vector
+            lib = save_beam_vector(result, cfg.target.model, Path("data/vectors"),
+                                   kind="agentic", needs_review=False)
+            if lib:
+                print(f"vector saved to {lib} (verifiable judge -- trustworthy)")
         return 0 if result.solved else 2
 
     result = asyncio.run(run_agentic_single(cfg, scenario, args.attempts))
@@ -260,7 +268,9 @@ def _sweep_models(cfg: Config, args) -> int:
 
 
 def _replay(cfg: Config, args) -> int:
-    from mta.eval.replay import load_vectors, run_content_replay, run_replay, write_report
+    from mta.eval.replay import (
+        load_vectors, run_agentic_replay, run_content_replay, run_replay, write_report,
+    )
     from mta.scenarios import get_scenario
     from pathlib import Path
 
@@ -270,10 +280,13 @@ def _replay(cfg: Config, args) -> int:
         print(f"no vectors in data/vectors/{args.scenario}.jsonl -- run `mta refine` or the content beam first.")
         return 1
     models = [m for m in args.models.split(",") if m.strip()]
-    if getattr(scenario, "kind", "") == "chat_content":
-        matrix = asyncio.run(run_content_replay(cfg, scenario, models, vectors))
-    else:
-        matrix = asyncio.run(run_replay(cfg, scenario, models, vectors))
+    kind = getattr(scenario, "kind", "")
+    if kind == "chat_content":
+        matrix = asyncio.run(run_content_replay(cfg, scenario, models, vectors, trials=args.trials))
+    elif kind == "agentic":
+        matrix = asyncio.run(run_agentic_replay(cfg, scenario, models, vectors, trials=args.trials))
+    else:  # single-shot injection (indirect / secret extraction)
+        matrix = asyncio.run(run_replay(cfg, scenario, models, vectors, trials=args.trials))
     out = write_report(matrix, Path(cfg.reports_dir))
     print(matrix.markdown())
     print(f"\nreport: {out}")

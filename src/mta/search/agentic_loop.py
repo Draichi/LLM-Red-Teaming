@@ -237,6 +237,7 @@ async def run_agentic_beam(
                     best_score=score, strategy_trace=nb.strategy_trace,
                     tool_sequence=[c.name for c in nb.tool_trace],
                     reason=nb.verdict.reason, budget=budget.summary(),
+                    attacker_turns=list(nb.attacker_turns),
                 )
         branches = [nb for _, nb in scored[:beam_width]]
 
@@ -524,10 +525,11 @@ async def run_injection_refine(
     )
 
 
-def save_content_vector(result: AgenticBeamResult, model: str, vectors_dir: Path) -> Path | None:
-    """Save a solved multi-turn content vector (the attacker's turn sequence) to
-    the local library. Content solves are human-review candidates -- the entry is
-    flagged as such."""
+def save_beam_vector(result: AgenticBeamResult, model: str, vectors_dir: Path,
+                     kind: str, needs_review: bool) -> Path | None:
+    """Save a solved multi-turn beam vector (the attacker's turn sequence) to the
+    local library. Verifiable scenarios (kind='agentic') are trustworthy; content
+    solves are flagged for human review."""
     if not (result.solved and result.attacker_turns):
         return None
     import json
@@ -538,8 +540,8 @@ def save_content_vector(result: AgenticBeamResult, model: str, vectors_dir: Path
     with out.open("a") as fh:
         fh.write(json.dumps({
             "scenario": result.scenario,
-            "kind": "chat_content",
-            "candidate_needs_human_review": True,
+            "kind": kind,
+            "candidate_needs_human_review": needs_review,
             "validated_against": model,
             "strategy_trace": result.strategy_trace,
             "turns": list(result.attacker_turns),

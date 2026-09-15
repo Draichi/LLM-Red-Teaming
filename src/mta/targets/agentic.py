@@ -56,20 +56,27 @@ class AgenticTarget:
     _PERMANENT = {"BadRequestError", "AuthenticationError", "NotFoundError",
                   "PermissionDeniedError", "UnsupportedParamsError"}
 
+    _reported_fail = False
+
     async def _complete(self, **kwargs):
-        """acompletion with backoff on transient errors (rate limits) so a
-        cross-model run survives concurrency limits; permanent errors raise
-        immediately so the caller can skip that model."""
+        """acompletion with backoff on transient errors (rate limits). Fails SOFT:
+        after retries (or on a permanent error) it returns None instead of raising,
+        so one bad call can't crash a long multi-turn/multi-model run -- the caller
+        treats a missing response as an empty (non-delivering) turn."""
         last = None
         for attempt in range(self.max_retries):
             try:
                 return await self._litellm.acompletion(**kwargs)
             except Exception as e:  # noqa: BLE001
-                if type(e).__name__ in self._PERMANENT:
-                    raise
                 last = e
+                if type(e).__name__ in self._PERMANENT:
+                    break
                 await asyncio.sleep(min(2**attempt, 15))
-        raise RuntimeError(f"target call failed after {self.max_retries} attempts: {last}")
+        if not AgenticTarget._reported_fail:
+            AgenticTarget._reported_fail = True
+            print(f"[target] a call failed (continuing with empty turns): "
+                  f"{type(last).__name__}: {last}", file=__import__('sys').stderr)
+        return None
 
     async def __call__(self, messages: list[dict]) -> TurnResult:
         tools = self.scenario.tools()
@@ -95,6 +102,8 @@ class AgenticTarget:
                     messages=convo,
                     **extra,
                 )
+                if resp is None:
+                    break  # failed call -> stop this turn with what we have
                 text = (resp.choices[0].message.content or "").strip()
                 call = _parse_tool_call(text)
                 if call is None:
@@ -124,7 +133,7 @@ class AgenticTarget:
                 messages=convo,
                 **extra,
             )
-        text = (resp.choices[0].message.content or "").strip()
+        text = ((resp.choices[0].message.content if resp else "") or "").strip()
         return TurnResult(text=text, tool_calls=[], messages=[{"role": "assistant", "content": text}])
 
 
