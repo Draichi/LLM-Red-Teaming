@@ -17,11 +17,16 @@ class ApiTarget:
         self._litellm = litellm
 
     async def __call__(self, messages: list[dict]) -> str:
+        kwargs: dict = dict(
+            model=self.cfg.model,
+            temperature=self.cfg.temperature,
+            max_tokens=self.cfg.max_tokens,
+            messages=messages,
+        )
+        if getattr(self.cfg, "disable_thinking", False):
+            from mta.providers import thinking_off_extra_body
+
+            kwargs["extra_body"] = thinking_off_extra_body()
         async with self._sem:
-            resp = await self._litellm.acompletion(
-                model=self.cfg.model,
-                temperature=self.cfg.temperature,
-                max_tokens=self.cfg.max_tokens,
-                messages=messages,
-            )
+            resp = await self._litellm.acompletion(**kwargs)
         return resp.choices[0].message.content or ""

@@ -12,6 +12,7 @@ data/calibration/*.csv
 data/runs/*.jsonl
 reports/*.md
 reports/*.png
+reports/*.jsonl
 
 # But keep the placeholder objective file tracked.
 !data/behaviors/objectives.jsonl

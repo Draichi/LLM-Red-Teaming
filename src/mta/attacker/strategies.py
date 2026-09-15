@@ -16,6 +16,7 @@ from dataclasses import dataclass
 class Strategy:
     label: str
     description: str
+    multi_turn: bool = False  # needs >1 turn (e.g. benign setup then the fire turn)
 
 
 # Descriptions are intentionally abstract. They name the *shape* of a move a

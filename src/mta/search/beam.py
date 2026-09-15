@@ -35,9 +35,12 @@ async def beam_search(
     judge: LLMJudge,
     cfg: SearchConfig,
     on_candidate: Callable[[dict], None] | None = None,
+    gate=None,  # optional mta.judge.classifier_gate.LLMClassifierGate (tier 2)
 ) -> RunResult:
     budget = Budget(max_target_calls=cfg.max_target_calls)
     judge.budget = budget
+    if gate is not None:
+        gate.budget = budget
     beams: list[Conversation] = [Conversation(objective=objective)]
     best_score = 0.0
 
@@ -66,18 +69,28 @@ async def beam_search(
 
         replies = await asyncio.gather(*(_ask(c, m) for c, m, _ in pending))
 
-        # 3. Cheap gate, then build candidate conversations.
-        candidates: list[Conversation] = []
-        for (conv, move, strategy), reply in zip(pending, replies):
-            if is_obvious_refusal(reply):
-                continue
-            candidates.append(
-                conv.extend(
-                    {"role": "user", "content": move},
-                    {"role": "assistant", "content": reply},
-                    strategy=strategy,
-                )
+        # 3. Two-tier cheap gate, then build candidate conversations.
+        #    Tier 1 (free regex): drop obvious refusals.
+        survivors = [
+            (conv, move, strategy, reply)
+            for (conv, move, strategy), reply in zip(pending, replies)
+            if not is_obvious_refusal(reply)
+        ]
+        #    Tier 2 (cheap classifier): drop soft refusals before the big judge.
+        if gate is not None and survivors:
+            flags = await asyncio.gather(
+                *(gate.is_refusal(objective, s[3]) for s in survivors)
             )
+            survivors = [s for s, refused in zip(survivors, flags) if not refused]
+
+        candidates: list[Conversation] = [
+            conv.extend(
+                {"role": "user", "content": move},
+                {"role": "assistant", "content": reply},
+                strategy=strategy,
+            )
+            for (conv, move, strategy, reply) in survivors
+        ]
 
         if not candidates:
             if budget.exhausted:

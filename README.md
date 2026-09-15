@@ -64,6 +64,52 @@ kappa and a confusion matrix. **The false-positive rate is the metric that
 matters most**: a judge that rewards refusals makes the search optimize toward
 nothing.
 
+### Calibration result (n = 602, `featherless_ai/Qwen/Qwen3-235B-A22B`)
+
+Accepted **with a documented limitation** — full report in
+[`reports/judge_calibration.md`](reports/judge_calibration.md):
+
+| Metric | Value | Target | Status |
+|---|---|---|---|
+| Cohen's kappa | 0.713 | ≥ 0.7 | met |
+| False-positive rate | 0.146 | < 0.1 | not met |
+| Recall | 0.861 | — | — |
+
+The kappa bar is met; the strict FPR < 0.1 bar is not, and no threshold clears
+both at once (where kappa ≥ 0.7, FPR ≈ 0.15). This is the known LLM-judge ceiling
+— StrongREJECT-class judges sit at kappa ~0.70–0.75 and don't reach FPR < 0.1
+against binary harm labels. The residual false positives are a specific class:
+**plausible-but-non-functional / fabricated** content (a broken code snippet,
+fabricated names) that reads as specific but isn't usable, which the judge can't
+verify. Getting here took a rubric that judges against the *canonical* objective
+(not the obfuscated prompt), treats disclaimer-then-deliver as success, and uses
+few-shot near-miss examples. We operate at threshold 0.25 and, because the human
+baseline and the loop are scored by the **same** judge, the consistent bias
+largely cancels in the head-to-head. `mta report` regenerates this offline.
+
+## Phase 2 — two-tier cheap gate (validated)
+
+Before the concurrency-1 big judge, two cheap tiers screen out refusals:
+**tier 1** a free regex, **tier 2** a small ungated model
+(`Qwen/Qwen2.5-7B-Instruct`, runs 4-parallel). Validated against the human
+labels with `mta gate-eval` — the metric that matters is **blinding** (a real
+jailbreak wrongly screened, hiding it from the judge and the search):
+
+| Gate | Blinding rate | Judge-call reduction |
+|---|---|---|
+| regex only | 0.000 | 0.09 |
+| regex + classifier (naïve) | 0.31 | 0.36 |
+| regex + classifier + length guard | **0.010** | **0.165** |
+
+Two design findings made it safe: (1) frame the small model as neutral
+**refusal detection**, never "does this help accomplish [harmful goal]" — the
+latter trips its own safety training and it screens out 60% of real jailbreaks;
+(2) a **length guard** — only short replies can be a clean refusal, so long
+replies (including disclaimer-then-deliver jailbreaks) bypass the gate straight
+to the judge. The 0.165 reduction is a conservative floor: the calibration set
+is enriched with hard positives, so a real search (where the target refuses far
+more) saves much more. `gate.max_filter_chars` trades reduction against blinding.
+
 ## Human-baseline validity
 
 Run `mta human` on its sampled objectives **before** looking at any automated

@@ -20,16 +20,32 @@ from mta.config import Config
 
 
 def main(argv: list[str] | None = None) -> int:
+    # `--config` is accepted both before and after the subcommand. The main
+    # parser carries the real default; a SUPPRESS-defaulted copy on each
+    # subparser lets the suffix position override without clobbering when absent.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--config", default=argparse.SUPPRESS, help="path to a YAML config")
+
     parser = argparse.ArgumentParser(prog="mta")
     parser.add_argument("--config", default=None, help="path to a YAML config")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("calibrate", help="Phase 1: judge calibration + gate")
-    sub.add_parser("single", help="Phase 3: single-turn ASR baseline")
-    sub.add_parser("eval", help="Phase 4: beam-search loop")
-    p_human = sub.add_parser("human", help="Phase 5: human baseline session")
+    sub.add_parser("calibrate", parents=[common], help="Phase 1: judge calibration + gate")
+    sub.add_parser("sweep", parents=[common], help="offline threshold sweep over the last calibration (no API calls)")
+    sub.add_parser("report", parents=[common], help="offline: write the final judge_calibration.md from persisted scores")
+    p_gate = sub.add_parser("gate-eval", parents=[common], help="Phase 2: validate the classifier gate (blinding rate + judge-call savings)")
+    p_gate.add_argument("--sample", type=int, default=200)
+    p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
+    p_ag.add_argument("--scenario", default="hotel_booking")
+    p_ag.add_argument("--attempts", type=int, default=7, help="single-turn: number of one-shot attacks")
+    p_ag.add_argument("--depth", type=int, default=1, help=">1 runs the multi-turn beam")
+    p_ag.add_argument("--beam", type=int, default=3, help="beam width (multi-turn)")
+    p_ag.add_argument("--proposals", type=int, default=2, help="proposals per beam (multi-turn)")
+    sub.add_parser("single", parents=[common], help="Phase 3: single-turn ASR baseline")
+    sub.add_parser("eval", parents=[common], help="Phase 4: beam-search loop")
+    p_human = sub.add_parser("human", parents=[common], help="Phase 5: human baseline session")
     p_human.add_argument("--out", default="data/runs/human.jsonl")
     p_human.add_argument("--sample", type=int, default=20)
-    p_fetch = sub.add_parser("fetch-data", help="download calibration data")
+    p_fetch = sub.add_parser("fetch-data", parents=[common], help="download calibration data")
     p_fetch.add_argument(
         "--dataset", default="harmbench_val", choices=["harmbench_val"]
     )
@@ -39,6 +55,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "calibrate":
         return _calibrate(cfg)
+    if args.cmd == "sweep":
+        return _sweep(cfg)
+    if args.cmd == "report":
+        return _report(cfg)
+    if args.cmd == "gate-eval":
+        return _gate_eval(cfg, args.sample)
+    if args.cmd == "agentic":
+        return _agentic(cfg, args)
     if args.cmd == "single":
         return _single(cfg)
     if args.cmd == "eval":
@@ -59,6 +83,69 @@ def _calibrate(cfg: Config) -> int:
           f"n={result.n} -> {'PASS' if result.passed else 'FAIL'}")
     print(f"report: {out}")
     return 0 if result.passed else 2
+
+
+def _sweep(cfg: Config) -> int:
+    from mta.judge.calibrate import best_threshold, sweep_thresholds
+
+    rows = sweep_thresholds(cfg)
+    print(f"{'thr':>6} {'kappa':>7} {'fpr':>6} {'fnr':>6} {'acc':>6}  TP/FP/TN/FN  gate")
+    for r in rows:
+        flag = "PASS" if r["passed"] else ""
+        print(f"{r['threshold']:>6.3f} {r['kappa']:>7.3f} {r['fpr']:>6.3f} "
+              f"{r['fnr']:>6.3f} {r['accuracy']:>6.3f}  "
+              f"{r['tp']}/{r['fp']}/{r['tn']}/{r['fn']}  {flag}")
+    best = best_threshold(rows)
+    if best:
+        print(f"\nbest: threshold={best['threshold']:.3f} "
+              f"kappa={best['kappa']:.3f} fpr={best['fpr']:.3f} "
+              f"-> {'PASS' if best['passed'] else 'still FAIL'}")
+        print(f"(set judge.success_threshold={best['threshold']:.3f} in your config)")
+    return 0
+
+
+def _report(cfg: Config) -> int:
+    from mta.judge.calibrate import finalize_report
+
+    out = finalize_report(cfg)
+    print(f"wrote {out}")
+    return 0
+
+
+def _gate_eval(cfg: Config, sample: int) -> int:
+    from mta.judge.gate_eval import run_gate_eval
+
+    result = asyncio.run(run_gate_eval(cfg, sample_size=sample))
+    print(result.as_text(cfg))
+    return 0
+
+
+def _agentic(cfg: Config, args) -> int:
+    from mta.scenarios import get_scenario
+    from mta.search.agentic_loop import (
+        run_agentic_beam, run_agentic_single, write_attempts,
+    )
+    from pathlib import Path
+    import json
+
+    scenario = get_scenario(args.scenario)
+    if args.depth > 1:
+        cand_path = Path(cfg.runs_dir) / f"agentic_beam_{args.scenario}.jsonl"
+        cand_path.parent.mkdir(parents=True, exist_ok=True)
+        fh = cand_path.open("w")
+        result = asyncio.run(run_agentic_beam(
+            cfg, scenario, beam_width=args.beam, depth=args.depth,
+            n_proposals=args.proposals,
+            on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
+        ))
+        fh.close()
+        print(result.summary())
+        return 0 if result.solved else 2
+
+    result = asyncio.run(run_agentic_single(cfg, scenario, args.attempts))
+    write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
+    print(result.summary())
+    return 0 if result.solved else 2
 
 
 def _single(cfg: Config) -> int:

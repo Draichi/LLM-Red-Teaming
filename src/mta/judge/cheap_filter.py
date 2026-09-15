@@ -1,12 +1,33 @@
-"""Phase 2 cost control: a cheap gate before the expensive LLM judge.
+"""Phase 2 cost control: cheap gates before the expensive LLM judge.
 
-Obvious refusals never reach the judge. This is pure-Python and free; it should
-cut 50-70% of judge calls in a real search. It is deliberately conservative:
-it only fires on high-precision refusal signals so it never discards a genuine
-partial success (a false "obvious refusal" would blind the search).
+Two tiers, cheapest first, both in front of the calibrated big judge (design
+decision 2026-09-14: keep the large model as the sole *scorer*, add a small model
+only as a pre-filter):
+
+  1. `is_obvious_refusal` -- pure-Python regex, free. Discards high-precision
+     refusals. Deliberately conservative so it never drops a partial success.
+  2. `ClassifierGate` (Phase 2, not yet built) -- a small-class Featherless model
+     (1 concurrency unit -> 4 in parallel) that catches the softer refusals the
+     regex misses, still far cheaper than the 235B judge. It only needs high
+     *recall* on refusals; the big judge does the actual scoring on survivors.
+
+`ClassifierGate` is intentionally left unimplemented until the Phase 1 kappa gate
+passes -- do not stack Phase 2 on an uncalibrated judge.
 """
 
 from __future__ import annotations
+
+from typing import Protocol
+
+
+class ClassifierGate(Protocol):
+    """Phase 2 second-tier gate. Returns True if `reply` is (probably) a refusal
+    and should NOT reach the expensive judge. High recall on refusals matters
+    more than precision -- a missed refusal just costs one big-judge call, a
+    false refusal blinds the search."""
+
+    async def is_refusal(self, objective: str, reply: str) -> bool: ...
+
 
 import re
 

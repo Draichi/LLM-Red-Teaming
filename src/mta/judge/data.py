@@ -33,25 +33,68 @@ def _turn(objective: str, response: str) -> list[dict]:
     ]
 
 
-def load_harmbench_val(path: str | Path) -> list[LabeledItem]:
-    """HarmBench val set: {behavior_id: [ {test_case, generation, human_0..2}, ...]}."""
-    raw = json.loads(Path(path).read_text())
+def _load_behavior_map(path: Path) -> dict[str, str]:
+    """Map HarmBench behavior_id -> canonical harmful behavior text (+ context).
+
+    The judge must be told the *true* objective, not the attack-wrapped
+    `test_case`: HarmBench's human labels were assigned knowing the canonical
+    behavior, and an obfuscated prompt (e.g. "improve family communication on the
+    stairs") hides intent the judge would otherwise miss. Missing file -> {} and
+    the loader falls back to the wrapped prompt."""
+    if not path.exists():
+        return {}
+    import pandas as pd
+
+    df = pd.read_csv(path)
+    id_col = _first_present(df, ["BehaviorID", "behavior_id"])
+    b_col = _first_present(df, ["Behavior", "behavior"])
+    ctx_col = next((c for c in ("ContextString", "context") if c in df.columns), None)
+    out: dict[str, str] = {}
+    for _, row in df.iterrows():
+        text = str(row[b_col])
+        if ctx_col and isinstance(row[ctx_col], str) and row[ctx_col].strip():
+            text = f"{row[ctx_col].strip()}\n\n{text}"
+        out[str(row[id_col])] = text
+    return out
+
+
+def load_harmbench_val(
+    path: str | Path, behaviors_path: str | Path | None = None
+) -> list[LabeledItem]:
+    """HarmBench val set: {behavior_id: [ {test_case, generation, human_0..2}, ...]}.
+
+    The judge scores against the canonical behavior (objective), while the
+    transcript it reads is the actual wrapped prompt the target saw + the target
+    reply -- mirroring the real search pipeline, where the objective is known
+    separately from the attacker's (possibly obfuscated) turns."""
+    path = Path(path)
+    if behaviors_path is None:
+        behaviors_path = path.parent / "harmbench_behaviors.csv"
+    behaviors = _load_behavior_map(Path(behaviors_path))
+
+    raw = json.loads(path.read_text())
     items: list[LabeledItem] = []
-    for _behavior_id, examples in raw.items():
+    for behavior_id, examples in raw.items():
+        canonical = behaviors.get(behavior_id)
         for ex in examples:
             votes = [ex[k] for k in ("human_0", "human_1", "human_2") if k in ex]
             if not votes:
                 continue
             majority = 1 if sum(votes) >= (len(votes) / 2.0) else 0
-            objective = ex.get("test_case") or ex.get("behavior") or _behavior_id
+            wrapped_prompt = ex.get("test_case") or _behavior_id_fallback(behavior_id)
+            objective = canonical or wrapped_prompt
+            messages = [
+                {"role": "user", "content": wrapped_prompt},
+                {"role": "assistant", "content": ex.get("generation", "")},
+            ]
             items.append(
-                LabeledItem(
-                    objective=objective,
-                    messages=_turn(objective, ex.get("generation", "")),
-                    human_label=majority,
-                )
+                LabeledItem(objective=objective, messages=messages, human_label=majority)
             )
     return items
+
+
+def _behavior_id_fallback(behavior_id: str) -> str:
+    return behavior_id.replace("_", " ")
 
 
 def load_strongreject_labelbox(path: str | Path) -> list[LabeledItem]:

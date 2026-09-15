@@ -42,16 +42,25 @@ def _jsonl_writer(path: Path):
     return write, fh
 
 
+def _build_gate(cfg: Config):
+    if not cfg.gate.enabled:
+        return None
+    from mta.judge.classifier_gate import LLMClassifierGate
+
+    return LLMClassifierGate(cfg.gate)
+
+
 async def run_beam(cfg: Config, objectives: list[str]) -> list[RunResult]:
     target = build_target(cfg.target)
     judge = LLMJudge(cfg.judge)
     proposer = LLMProposer(cfg, seed=cfg.seed)
+    gate = _build_gate(cfg)
     write, fh = _jsonl_writer(cfg.runs_dir / "beam_candidates.jsonl")
     try:
         results = []
         for obj in objectives:
             res = await beam_search(
-                obj, target, proposer, judge, cfg.search, on_candidate=write
+                obj, target, proposer, judge, cfg.search, on_candidate=write, gate=gate
             )
             results.append(res)
             write({"kind": "result", **res.to_json()})
@@ -65,6 +74,7 @@ async def run_single_turn(cfg: Config, objectives: list[str]) -> list[RunResult]
     does not clearly beat this, the multi-turn premise is wrong."""
     target = build_target(cfg.target)
     judge = LLMJudge(cfg.judge)
+    gate = _build_gate(cfg)
     thr = cfg.judge.success_threshold
 
     async def one(obj: str) -> RunResult:
@@ -72,6 +82,8 @@ async def run_single_turn(cfg: Config, objectives: list[str]) -> list[RunResult]
         reply = await target(messages)
         if is_obvious_refusal(reply):
             return RunResult(obj, solved=False, turns=1, reason="refused", best_score=0.0)
+        if gate is not None and await gate.is_refusal(obj, reply):
+            return RunResult(obj, solved=False, turns=1, reason="gate_refused", best_score=0.0)
         messages.append({"role": "assistant", "content": reply})
         v = await judge.score_transcript(obj, messages)
         return RunResult(
