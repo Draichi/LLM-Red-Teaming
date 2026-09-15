@@ -41,17 +41,33 @@ def _tool_instructions(tools: list[dict]) -> str:
 
 
 class AgenticTarget:
-    def __init__(self, cfg: TargetConfig, scenario: Scenario, max_tool_steps: int = 6):
+    def __init__(self, cfg: TargetConfig, scenario: Scenario, max_tool_steps: int = 6, max_retries: int = 4):
         self.cfg = cfg
         self.scenario = scenario
         self.max_tool_steps = max_tool_steps
+        self.max_retries = max_retries
         self._sem = asyncio.Semaphore(cfg.max_concurrency)
         import litellm
 
         self._litellm = litellm
 
+    async def _complete(self, **kwargs):
+        """acompletion with backoff -- survives Featherless concurrency limits so
+        a cross-model bench doesn't crash when a model's unit cost is high."""
+        last = None
+        for attempt in range(self.max_retries):
+            try:
+                return await self._litellm.acompletion(**kwargs)
+            except Exception as e:  # noqa: BLE001 - retry rate-limit / transient
+                last = e
+                await asyncio.sleep(min(2**attempt, 15))
+        raise RuntimeError(f"target call failed after {self.max_retries} attempts: {last}")
+
     async def __call__(self, messages: list[dict]) -> TurnResult:
-        system = self.scenario.system_prompt() + "\n" + _tool_instructions(self.scenario.tools())
+        tools = self.scenario.tools()
+        if not tools:
+            return await self._chat_turn(messages)
+        system = self.scenario.system_prompt() + "\n" + _tool_instructions(tools)
         convo = [{"role": "system", "content": system}, *messages]
         start = len(convo)  # everything appended past here is this turn's target-side msgs
         trace: list[ToolCall] = []
@@ -64,7 +80,7 @@ class AgenticTarget:
 
         async with self._sem:
             for _ in range(self.max_tool_steps):
-                resp = await self._litellm.acompletion(
+                resp = await self._complete(
                     model=self.cfg.model,
                     temperature=self.cfg.temperature,
                     max_tokens=self.cfg.max_tokens,
@@ -84,6 +100,24 @@ class AgenticTarget:
         if last_text:
             convo.append({"role": "assistant", "content": last_text})
         return TurnResult(text=last_text, tool_calls=trace, messages=convo[start:])
+
+
+    async def _chat_turn(self, messages: list[dict]) -> TurnResult:
+        """No-tools scenario (e.g. prompt-injection): plain chat, no tool loop."""
+        convo = [{"role": "system", "content": self.scenario.system_prompt()}, *messages]
+        extra = {}
+        if getattr(self.cfg, "disable_thinking", False):
+            extra["extra_body"] = thinking_off_extra_body()
+        async with self._sem:
+            resp = await self._complete(
+                model=self.cfg.model,
+                temperature=self.cfg.temperature,
+                max_tokens=self.cfg.max_tokens,
+                messages=convo,
+                **extra,
+            )
+        text = (resp.choices[0].message.content or "").strip()
+        return TurnResult(text=text, tool_calls=[], messages=[{"role": "assistant", "content": text}])
 
 
 def _parse_tool_call(text: str) -> ToolCall | None:

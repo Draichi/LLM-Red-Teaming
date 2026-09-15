@@ -20,10 +20,12 @@ from mta.scenarios.base import (
     TurnResult,
 )
 from mta.scenarios.hotel_booking import HotelBookingScenario
+from mta.scenarios.secret_extraction import SecretExtractionScenario
 
 # Registry: scenario name -> constructor. Add a new Gray Swan scenario type here.
 SCENARIOS = {
-    "hotel_booking": HotelBookingScenario,
+    "hotel_booking": HotelBookingScenario,        # agentic tool-misuse
+    "secret_extraction": SecretExtractionScenario,  # direct prompt injection (chat)
 }
 
 

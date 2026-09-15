@@ -40,6 +40,13 @@ def main(argv: list[str] | None = None) -> int:
     p_ag.add_argument("--depth", type=int, default=1, help=">1 runs the multi-turn beam")
     p_ag.add_argument("--beam", type=int, default=3, help="beam width (multi-turn)")
     p_ag.add_argument("--proposals", type=int, default=2, help="proposals per beam (multi-turn)")
+    p_bench = sub.add_parser("bench", parents=[common], help="headline: single-turn vs multi-turn across target models")
+    p_bench.add_argument("--scenario", default="hotel_booking")
+    p_bench.add_argument("--models", required=True, help="comma-separated target model ids (bare org/model = featherless)")
+    p_bench.add_argument("--attempts", type=int, default=7)
+    p_bench.add_argument("--depth", type=int, default=2)
+    p_bench.add_argument("--beam", type=int, default=3)
+    p_bench.add_argument("--proposals", type=int, default=2)
     sub.add_parser("single", parents=[common], help="Phase 3: single-turn ASR baseline")
     sub.add_parser("eval", parents=[common], help="Phase 4: beam-search loop")
     p_human = sub.add_parser("human", parents=[common], help="Phase 5: human baseline session")
@@ -63,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
         return _gate_eval(cfg, args.sample)
     if args.cmd == "agentic":
         return _agentic(cfg, args)
+    if args.cmd == "bench":
+        return _bench(cfg, args)
     if args.cmd == "single":
         return _single(cfg)
     if args.cmd == "eval":
@@ -146,6 +155,23 @@ def _agentic(cfg: Config, args) -> int:
     write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
     print(result.summary())
     return 0 if result.solved else 2
+
+
+def _bench(cfg: Config, args) -> int:
+    from mta.eval.bench import run_bench, write_report
+    from mta.scenarios import get_scenario
+    from pathlib import Path
+
+    scenario = get_scenario(args.scenario)
+    models = [m for m in args.models.split(",") if m.strip()]
+    result = asyncio.run(run_bench(
+        cfg, scenario, models,
+        attempts=args.attempts, depth=args.depth, beam=args.beam, proposals=args.proposals,
+    ))
+    out = write_report(result, Path(cfg.reports_dir))
+    print(result.markdown())
+    print(f"\nreport: {out}")
+    return 0
 
 
 def _single(cfg: Config) -> int:

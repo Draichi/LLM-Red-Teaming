@@ -196,12 +196,19 @@ async def run_agentic_beam(
         scored: list[tuple[float, _Branch]] = []
         for (b, move, strat), result in zip(pending, results):
             attacker_turns = b.attacker_turns + [move]
+            assistant_texts = b.assistant_texts + [result.text]
             tool_trace = b.tool_trace + list(result.tool_calls)
-            transcript = [{"role": "user", "content": t} for t in attacker_turns]
+            # Full transcript (user + assistant) so text-based judges (e.g. prompt
+            # injection) see the model's replies; constraint checks filter to
+            # user turns by role.
+            transcript = []
+            for u, a in zip(attacker_turns, assistant_texts):
+                transcript.append({"role": "user", "content": u})
+                transcript.append({"role": "assistant", "content": a})
             verdict = scenario.judge(transcript, tool_trace)
             nb = _Branch(
                 attacker_turns=attacker_turns,
-                assistant_texts=b.assistant_texts + [result.text],
+                assistant_texts=assistant_texts,
                 target_history=b.target_history + [{"role": "user", "content": move}] + list(result.messages),
                 tool_trace=tool_trace,
                 strategy_trace=b.strategy_trace + [strat],
