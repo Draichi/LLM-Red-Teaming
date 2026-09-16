@@ -59,6 +59,12 @@ def main(argv: list[str] | None = None) -> int:
     p_sw.add_argument("--scenario", default="ransomware_injection")
     p_sw.add_argument("--models", required=True, help="comma-separated target models")
     p_sw.add_argument("--attacks", type=int, default=8, help="number of attacks to generate once and reuse")
+    p_pick = sub.add_parser("pick-vector", parents=[common], help="extract a saved vector's turns to a file (for arena submission / --prev-file)")
+    p_pick.add_argument("--scenario", required=True)
+    p_pick.add_argument("--index", type=int, default=-1, help="which vector (-1 = newest; negative counts from the end)")
+    p_pick.add_argument("--source", choices=["vectors", "refine"], default="vectors",
+                        help="vectors = the library (multi-turn); refine = a refine-manual variant")
+    p_pick.add_argument("--out", default=None, help="write to this file (default: print)")
     p_rm = sub.add_parser("refine-manual", parents=[common], help="refine an attack using the REAL arena's response (human-in-the-loop)")
     p_rm.add_argument("--scenario", required=True)
     p_rm.add_argument("--response-file", required=True, help="text file with the arena model's actual response")
@@ -98,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
         return _agentic(cfg, args)
     if args.cmd == "refine":
         return _refine(cfg, args)
+    if args.cmd == "pick-vector":
+        return _pick_vector(cfg, args)
     if args.cmd == "refine-manual":
         return _refine_manual(cfg, args)
     if args.cmd == "replay-vectors":
@@ -282,6 +290,52 @@ def _sweep_models(cfg: Config, args) -> int:
     out = write_report(matrix, Path(cfg.reports_dir))
     print(matrix.markdown())
     print(f"\nreport: {out}")
+    return 0
+
+
+def _vector_turns(entry: dict) -> list[str]:
+    """The ordered attack turns of a library/refine entry (multi-turn vector,
+    single-shot payload, or a refine-manual variant)."""
+    if entry.get("turns"):
+        return list(entry["turns"])
+    for k in ("payload", "variant"):
+        if entry.get(k):
+            return [entry[k]]
+    return []
+
+
+def _pick_vector(cfg: Config, args) -> int:
+    import json
+    from pathlib import Path
+
+    src = (Path("data/vectors") if args.source == "vectors"
+           else Path(cfg.runs_dir)) / (
+        f"{args.scenario}.jsonl" if args.source == "vectors"
+        else f"refine_manual_{args.scenario}.jsonl")
+    if not src.exists():
+        print(f"nothing at {src} -- run the beam/refine first.")
+        return 1
+    rows = [json.loads(l) for l in src.read_text().splitlines() if l.strip()]
+    try:
+        entry = rows[args.index]
+    except IndexError:
+        print(f"index {args.index} out of range ({len(rows)} entries)")
+        return 1
+
+    turns = _vector_turns(entry)
+    if not turns:
+        print("entry has no turns/payload")
+        return 1
+    # Number the turns so you can submit them in order in the arena; a single
+    # turn is written bare so it drops straight into --prev-file.
+    text = turns[0] if len(turns) == 1 else "\n\n".join(
+        f"# turn {i}\n{t}" for i, t in enumerate(turns, 1))
+
+    if args.out:
+        Path(args.out).write_text(text)
+        print(f"wrote {len(turns)} turn(s) to {args.out}")
+    else:
+        print(text)
     return 0
 
 
