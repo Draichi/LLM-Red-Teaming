@@ -107,9 +107,13 @@ class Config(BaseModel):
     # etc.), weakening the search -- point this at an uninhibited/abliterated
     # model so the attacker actually generates the attacks.
     attacker_model: str = ""
-    attacker_disable_thinking: bool = False
-    # Reasoning attackers (e.g. Qwen3-235B) spend output budget on thinking; a
-    # small cap leaves the actual attack empty. Keep this generous.
+    # Thinking OFF for the attacker by default: reasoning attackers (Qwen3-235B,
+    # the abliterated Qwen3 variants) otherwise dump their planning into the reply
+    # (or run out mid-thought), instead of producing a clean attack turn. The
+    # attackers in use are Qwen3-family and accept the kwarg; set False only if you
+    # point --attacker-model at a NON-reasoning model (the kwarg can corrupt those).
+    attacker_disable_thinking: bool = True
+    # Even with thinking off, give the attack turn room.
     attacker_max_tokens: int = 2048
     behaviors_path: Path = Path("data/behaviors/objectives.jsonl")
     runs_dir: Path = Path("data/runs")
