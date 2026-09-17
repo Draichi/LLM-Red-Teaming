@@ -77,6 +77,9 @@ class LLMProposer:
         # the injected payload content. Set via from_scenario().
         self.attacker_system = _ATTACKER_SYSTEM
         self.output_noun = "the next user turn"
+        # Optional scenario check that a generated attack contains the objective's
+        # required elements; regenerate until it holds (no wasted target calls).
+        self.validator = None
         self._rng = random.Random(seed)
         self._sem = asyncio.Semaphore(cfg.judge.max_concurrency)
         # The attacker model is separate from the judge -- point it at an
@@ -94,17 +97,23 @@ class LLMProposer:
         'at capacity'), with backoff -- one bad attacker call must not crash a run.
         Fails soft to '' after retries."""
         last = None
-        for attempt in range(4):
+        best_invalid = ""  # a non-empty attack that failed validation, as fallback
+        for attempt in range(5):
             try:
                 kwargs = self._attacker_kwargs(system, user, self._max_tokens)
                 async with self._sem:
                     resp = await self._litellm.acompletion(**kwargs)
                 text = strip_meta(resp.choices[0].message.content or "")
-                if text:
+                if not text:
+                    continue
+                if self.validator is None or self.validator(text):
                     return text
+                best_invalid = text  # keep trying for a valid one
             except Exception as e:  # noqa: BLE001 - retry transient, fail soft
                 last = e
                 await asyncio.sleep(min(2 ** attempt, 12))
+        if best_invalid:
+            return best_invalid  # validator never satisfied; use the best we got
         if last is not None:
             import sys
             print(f"[attacker] call failed (empty turn): {type(last).__name__}: {last}",
@@ -121,6 +130,7 @@ class LLMProposer:
         if getattr(scenario, "kind", "") == "indirect":
             p.attacker_system = _INJECTION_ATTACKER_SYSTEM
             p.output_noun = "the injected payload content"
+        p.validator = getattr(scenario, "validate_payload", None)
         return p
 
     def _attacker_kwargs(self, system: str, user: str, max_tokens: int) -> dict:
