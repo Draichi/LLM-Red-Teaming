@@ -76,6 +76,11 @@ def main(argv: list[str] | None = None) -> int:
     p_rm.add_argument("--note", default="", help="what happened / what to fix (you are the oracle)")
     p_rm.add_argument("--attacker-model", default=None)
     p_rm.add_argument("--proposals", type=int, default=3)
+    p_px = sub.add_parser("proxy-eval", parents=[common], help="rank candidate proxy models by how well they predict the arena")
+    p_px.add_argument("--scenario", required=True)
+    p_px.add_argument("--truth", required=True, help="JSONL of {name, payload, arena_rate} (arena outcomes)")
+    p_px.add_argument("--models", required=True, help="comma-separated candidate proxy models")
+    p_px.add_argument("--trials", type=int, default=5)
     p_bench = sub.add_parser("bench", parents=[common], help="headline: single-turn vs multi-turn across target models")
     p_bench.add_argument("--scenario", default="hotel_booking")
     p_bench.add_argument("--models", required=True, help="comma-separated target model ids (bare org/model = featherless)")
@@ -116,6 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         return _replay(cfg, args)
     if args.cmd == "sweep-models":
         return _sweep_models(cfg, args)
+    if args.cmd == "proxy-eval":
+        return _proxy_eval(cfg, args)
     if args.cmd == "bench":
         return _bench(cfg, args)
     if args.cmd == "single":
@@ -446,6 +453,24 @@ def _replay(cfg: Config, args) -> int:
         matrix = asyncio.run(run_replay(cfg, scenario, models, vectors, trials=args.trials))
     out = write_report(matrix, Path(cfg.reports_dir))
     print(matrix.markdown())
+    print(f"\nreport: {out}")
+    return 0
+
+
+def _proxy_eval(cfg: Config, args) -> int:
+    from mta.eval.proxy_eval import load_truth, run_proxy_eval, write_report
+    from mta.scenarios import get_scenario
+    from pathlib import Path
+
+    scenario = get_scenario(args.scenario)
+    if getattr(scenario, "kind", "") != "indirect":
+        print("proxy-eval currently supports indirect (single-shot payload) scenarios.")
+        return 1
+    truth = load_truth(args.truth)
+    models = [m for m in args.models.split(",") if m.strip()]
+    result = asyncio.run(run_proxy_eval(cfg, scenario, truth, models, trials=args.trials))
+    out = write_report(result, Path(cfg.reports_dir))
+    print(result.markdown())
     print(f"\nreport: {out}")
     return 0
 
