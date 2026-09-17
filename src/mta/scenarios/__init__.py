@@ -20,6 +20,7 @@ from mta.scenarios.base import (
     TurnResult,
 )
 from mta.scenarios.hotel_booking import HotelBookingScenario
+from mta.scenarios.malware_game import MalwareGameScenario
 from mta.scenarios.radical_propaganda import RadicalPropagandaScenario
 from mta.scenarios.ransomware_injection import RansomwareInjectionScenario
 from mta.scenarios.secret_extraction import SecretExtractionScenario
@@ -29,6 +30,7 @@ SCENARIOS = {
     "hotel_booking": HotelBookingScenario,            # agentic tool-misuse
     "secret_extraction": SecretExtractionScenario,    # direct prompt injection (chat)
     "ransomware_injection": RansomwareInjectionScenario,  # indirect prompt injection
+    "malware_game": MalwareGameScenario,              # indirect prompt injection (malware rec)
     "radical_propaganda": RadicalPropagandaScenario,  # chat content-gen (rubric + constraints)
 }
 

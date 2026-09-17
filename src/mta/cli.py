@@ -220,10 +220,17 @@ def _agentic(cfg: Config, args) -> int:
         from mta.eval.bench import normalize_model
         cfg.attacker_model = normalize_model(args.attacker_model)
     if getattr(scenario, "kind", "") == "indirect":
-        from mta.search.agentic_loop import run_indirect_injection, write_attempts
+        from mta.search.agentic_loop import (
+            run_indirect_injection, save_attempt_vectors, write_attempts,
+        )
         result = asyncio.run(run_indirect_injection(cfg, scenario, args.attempts))
         write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
         print(result.summary())
+        if result.solved:
+            n = save_attempt_vectors(result, cfg.target.model, Path("data/vectors"),
+                                     kind="indirect", needs_review=False)
+            print(f"{n} solved payload(s) saved to data/vectors/{args.scenario}.jsonl "
+                  "(verifiable judge -- trustworthy)")
         return 0 if result.solved else 2
     if getattr(scenario, "kind", "") == "chat_content":
         if args.depth > 1:

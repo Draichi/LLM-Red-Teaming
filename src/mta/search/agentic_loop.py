@@ -164,11 +164,7 @@ async def run_agentic_beam(
     on_candidate=None,
 ) -> AgenticBeamResult:
     budget = Budget(max_target_calls=beam_width * n_proposals * depth)
-    proposer = LLMProposer(
-        cfg, seed=cfg.seed,
-        strategies=(scenario.strategies() or None),
-        guidance=(scenario.attacker_guidance() or ""),
-    )
+    proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     target = AgenticTarget(cfg.target, scenario)
 
     branches = [_Branch([], [], [], [], [])]
@@ -312,11 +308,7 @@ async def run_content_beam(
     from mta.scenarios.base import ScenarioVerdict
 
     budget = Budget(max_target_calls=beam_width * n_proposals * depth)
-    proposer = LLMProposer(
-        cfg, seed=cfg.seed,
-        strategies=(scenario.strategies() or None),
-        guidance=(scenario.attacker_guidance() or ""),
-    )
+    proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     target = AgenticTarget(cfg.target, scenario)  # chat
     judge = LLMJudge(cfg.judge)
     thr = cfg.judge.success_threshold
@@ -403,11 +395,7 @@ async def run_indirect_injection(
     embedded in the scenario's inbox template, the target reads it, and the
     verifiable judge checks the result. (Single-shot; the injection is one message.)"""
     budget = Budget(max_target_calls=n_attempts)
-    proposer = LLMProposer(
-        cfg, seed=cfg.seed,
-        strategies=(scenario.strategies() or None),
-        guidance=(scenario.attacker_guidance() or ""),
-    )
+    proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     target = AgenticTarget(cfg.target, scenario)  # tools()==[] -> chat target
 
     conv = Conversation(objective=scenario.attacker_objective())
@@ -423,6 +411,30 @@ async def run_indirect_injection(
 
     attempts = [a for a in await asyncio.gather(*(one(m, s) for m, s in proposals)) if a]
     return AgenticRunResult(scenario=scenario.name, attempts=attempts, budget=budget.summary())
+
+
+def save_attempt_vectors(result: AgenticRunResult, model: str, vectors_dir: Path,
+                         kind: str, needs_review: bool) -> int:
+    """Save each SOLVED single-shot attempt's payload to the library. Returns the
+    number saved. Used by the injection runners so a solved payload is captured."""
+    import json
+    import time
+
+    solved = [a for a in result.attempts if a.verdict.solved]
+    if not solved:
+        return 0
+    vectors_dir.mkdir(parents=True, exist_ok=True)
+    out = vectors_dir / f"{result.scenario}.jsonl"
+    with out.open("a") as fh:
+        for a in solved:
+            fh.write(json.dumps({
+                "scenario": result.scenario, "kind": kind,
+                "candidate_needs_human_review": needs_review,
+                "validated_against": model, "strategy": a.strategy,
+                "score": a.verdict.score, "payload": a.move,
+                "target_response": a.response, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            }) + "\n")
+    return len(solved)
 
 
 @dataclass
@@ -467,11 +479,7 @@ async def run_injection_refine(
     -- climbing toward a payload that breaks the target. Solved payloads are
     collected as validated vectors for the user's Gray Swan library."""
     budget = Budget(max_target_calls=beam_width * n_proposals * (rounds + 1))
-    proposer = LLMProposer(
-        cfg, seed=cfg.seed,
-        strategies=(scenario.strategies() or None),
-        guidance=(scenario.attacker_guidance() or ""),
-    )
+    proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     target = AgenticTarget(cfg.target, scenario)
     objective = scenario.attacker_objective()
 
@@ -531,11 +539,7 @@ async def run_refine_manual(cfg: Config, scenario, prev_attack: str, arena_respo
     attack you submitted and the arena model's actual response, generate improved
     variants to try next. The user is the oracle -- `note` carries what happened;
     the arena response is the highest-quality feedback there is (no local proxy)."""
-    proposer = LLMProposer(
-        cfg, seed=cfg.seed,
-        strategies=(scenario.strategies() or None),
-        guidance=(scenario.attacker_guidance() or ""),
-    )
+    proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     objective = scenario.attacker_objective()
     feedback = note or (
         "The attack did not fully succeed against the real target. Study the "

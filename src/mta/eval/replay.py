@@ -173,11 +173,7 @@ async def run_sweep(cfg: Config, scenario, models: list[str], n_attacks: int, tr
     from mta.attacker.propose import LLMProposer
     from mta.search.state import Conversation
 
-    proposer = LLMProposer(
-        cfg, seed=cfg.seed,
-        strategies=(scenario.strategies() or None),
-        guidance=(scenario.attacker_guidance() or ""),
-    )
+    proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     proposals = await proposer(Conversation(objective=scenario.attacker_objective()), n_attacks)
     vectors = [{"strategy": strat, "payload": payload} for payload, strat in proposals]
     return await run_replay(cfg, scenario, models, vectors, trials=trials)
