@@ -61,9 +61,12 @@ def main(argv: list[str] | None = None) -> int:
     p_sw.add_argument("--attacks", type=int, default=8, help="number of attacks to generate once and reuse")
     p_pick = sub.add_parser("pick-vector", parents=[common], help="extract a saved vector's turns to a file (for arena submission / --prev-file)")
     p_pick.add_argument("--scenario", required=True)
-    p_pick.add_argument("--index", type=int, default=-1, help="which vector (-1 = newest; negative counts from the end)")
+    p_pick.add_argument("--index", type=int, default=-1, help="which entry (-1 = newest; with --last-batch, 0-based within that batch)")
     p_pick.add_argument("--source", choices=["vectors", "refine"], default="vectors",
                         help="vectors = the library (multi-turn); refine = a refine-manual variant")
+    p_pick.add_argument("--last-batch", action="store_true",
+                        help="restrict to the most recent run's entries (same timestamp), so --index is stable")
+    p_pick.add_argument("--list", action="store_true", help="list the entries (with indices) instead of extracting")
     p_pick.add_argument("--out", default=None, help="write to this file (default: print)")
     p_rm = sub.add_parser("refine-manual", parents=[common], help="refine an attack using the REAL arena's response (human-in-the-loop)")
     p_rm.add_argument("--scenario", required=True)
@@ -323,6 +326,21 @@ def _pick_vector(cfg: Config, args) -> int:
         print(f"nothing at {src} -- run the beam/refine first.")
         return 1
     rows = [json.loads(l) for l in src.read_text().splitlines() if l.strip()]
+
+    # --last-batch: keep only the entries from the most recent run (same ts), so
+    # --index counts within that batch (0 = first of the batch) instead of over
+    # the whole accumulated file.
+    if args.last_batch and rows:
+        last_ts = rows[-1].get("ts")
+        rows = [r for r in rows if r.get("ts") == last_ts]
+
+    if args.list:
+        for i, r in enumerate(rows):
+            preview = (_vector_turns(r) or [""])[0][:90].replace("\n", " ")
+            print(f"[{i}] {preview}")
+        print(f"({len(rows)} entries" + (" in last batch)" if args.last_batch else ")"))
+        return 0
+
     try:
         entry = rows[args.index]
     except IndexError:
