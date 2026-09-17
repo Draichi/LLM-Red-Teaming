@@ -72,7 +72,8 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
 ## Guardrails (do not drift)
 
 - The arena stays **manual** — no scripted submission, ever.
-- The repo ships **machinery + abstract strategies, never payloads**; discovered
-  vectors, transcripts, arena responses live in gitignored `data/`.
+- Ship machinery + abstract strategies; **never *version* payloads** — discovered
+  vectors, transcripts, arena responses exist locally but live in gitignored
+  `data/`, never committed.
 - A "solved" from a **fuzzy** judge is a human-review candidate, not a verified break.
 - Don't force a false positive on an unbreakable target — report the wall.
