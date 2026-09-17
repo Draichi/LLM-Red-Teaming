@@ -65,8 +65,9 @@ def main(argv: list[str] | None = None) -> int:
     p_pick.add_argument("--source", choices=["vectors", "refine"], default="vectors",
                         help="vectors = the library (multi-turn); refine = a refine-manual variant")
     p_pick.add_argument("--last-batch", action="store_true",
-                        help="restrict to the most recent run's entries (same timestamp), so --index is stable")
-    p_pick.add_argument("--list", action="store_true", help="list the entries (with indices) instead of extracting")
+                        help="restrict to the most recent run's entries (library: same target model; refine: same timestamp), so --index is stable")
+    p_pick.add_argument("--model", default=None, help="only vectors validated against this target model (substring match)")
+    p_pick.add_argument("--list", action="store_true", help="list the entries (with strategy + model) instead of extracting")
     p_pick.add_argument("--out", default=None, help="write to this file (default: print)")
     p_rm = sub.add_parser("refine-manual", parents=[common], help="refine an attack using the REAL arena's response (human-in-the-loop)")
     p_rm.add_argument("--scenario", required=True)
@@ -327,17 +328,35 @@ def _pick_vector(cfg: Config, args) -> int:
         return 1
     rows = [json.loads(l) for l in src.read_text().splitlines() if l.strip()]
 
-    # --last-batch: keep only the entries from the most recent run (same ts), so
-    # --index counts within that batch (0 = first of the batch) instead of over
-    # the whole accumulated file.
+    # --model: keep only vectors validated against a given target model.
+    if getattr(args, "model", None):
+        want = args.model.lower()
+        rows = [r for r in rows if want in str(r.get("validated_against", "")).lower()]
+
+    # --last-batch: keep only the most recent run's entries, so --index counts
+    # within that batch. Library entries batch by the target model they were
+    # validated against (one run = one model); refine variants batch by timestamp.
     if args.last_batch and rows:
-        last_ts = rows[-1].get("ts")
-        rows = [r for r in rows if r.get("ts") == last_ts]
+        if args.source == "vectors":
+            last_model = rows[-1].get("validated_against")
+            batch = []
+            for r in reversed(rows):
+                if r.get("validated_against") == last_model:
+                    batch.append(r)
+                else:
+                    break
+            rows = list(reversed(batch))
+        else:
+            last_ts = rows[-1].get("ts")
+            rows = [r for r in rows if r.get("ts") == last_ts]
 
     if args.list:
         for i, r in enumerate(rows):
-            preview = (_vector_turns(r) or [""])[0][:90].replace("\n", " ")
-            print(f"[{i}] {preview}")
+            preview = (_vector_turns(r) or [""])[0][:70].replace("\n", " ")
+            tag = f"[{r['strategy']}]" if r.get("strategy") else ""
+            model = r.get("validated_against", "").split("/")[-1]
+            model = f"({model}) " if model else ""
+            print(f"[{i}] {tag} {model}{preview}")
         print(f"({len(rows)} entries" + (" in last batch)" if args.last_batch else ")"))
         return 0
 
