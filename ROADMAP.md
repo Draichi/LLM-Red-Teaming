@@ -79,6 +79,14 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
       background-colour BBCode / zero-width unicode for direct arena paste.
 - [ ] A per-scenario "difficulty" report: which models are walls vs soft.
 
+## Per-scenario writeups
+
+Each scenario keeps an engagement writeup at `data/writeups/<scenario>.md`
+(gitignored — holds payloads), started at scaffold time from the skill's
+`writeup_template.md` and updated every round: scenario + arena axes, intel log,
+kill log (model × vector × per-axis scores), the vectors, and reusable lessons.
+`malware_game.md` is the first one. It's the memory of what breaks what.
+
 ## Guardrails (do not drift)
 
 - The arena stays **manual** — no scripted submission, ever.

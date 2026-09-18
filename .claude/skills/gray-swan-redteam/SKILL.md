@@ -101,6 +101,13 @@ scored here — note that in the scenario.
 
 Add offline tests for every axis your judge scores; `uv run pytest -q` must stay green.
 
+**Start a writeup.** When scaffolding a scenario, copy `writeup_template.md` (in
+this skill folder) to `data/writeups/<scenario>.md` (gitignored — it holds
+payloads) and populate it as you iterate: scenario description + arena axes, an
+intel log of rounds (what was tried, how models reacted, the lesson), a kill log
+(model × vector × per-axis scores), and the vectors themselves. Update it every
+round — it is the memory of what breaks what, and the source for a final human writeup.
+
 ## When the vector underperforms in the arena
 
 Read the per-model feedback (which axis failed). Near-misses on one axis (e.g.
