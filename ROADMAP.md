@@ -32,18 +32,28 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
   scenarios (abliterated only helps for overtly-harmful content generation).
 - Reliability testing (`--trials`) is essential — single "solves" are noisy.
 - Not every (scenario × model) is breakable (GLM-4.7 resisted every malware vector).
-- Develop-on-proxy-then-transfer works; the proxy must resemble arena models
-  (Western, non-Chinese suspected; Mistral > Qwen locally).
+- Develop-on-proxy-then-transfer works; the proxy must resemble arena models.
+  Which proxy is best is **still open** — proxy-eval at n=4 was inconclusive, and
+  the "Western > Chinese" hunch is unconfirmed. Use an ensemble until the arena-
+  truth file is large enough to measure it.
 
 ## Now / next
 
 - [ ] **Push local commits to `origin`** (several ahead: proxy-eval, README, etc.).
-- [ ] **Run `proxy-eval`** on malware_game truth → confirm Mistral > Qwen with a number.
+- [x] **`proxy-eval` on malware_game (n=4): inconclusive — n too small.** With 4
+      payloads (2 tied at 0.0), Spearman is noise; all proxies ranked "high"
+      (Qwen +1.0, Mistral +0.94, phi-4 +0.78) with no real separation. Do NOT
+      draw a proxy conclusion from this. proxy-eval only becomes useful once the
+      arena-truth file has ~10-15 payloads spanning the difficulty range — and
+      that truth only accrues as a **byproduct** of normal arena submissions
+      (never run arena campaigns just to feed it). The "Mistral > Qwen" hunch is
+      unconfirmed; the "Chinese models aren't arena proxies" claim is unsupported.
+- [ ] **Proxy choice by ensemble, not by a small-n winner.** Develop against
+      Mistral + Qwen-72B (both break, different families); keep vectors that break
+      both. Revisit proxy-eval when the truth file is big enough.
 - [ ] **Lift malware_game 3/13 → higher.** Two arena near-misses (ruby tiger,
       shadow flamingo) failed only on Originality (<70). Refine for more
       independent paraphrase / technical detail; re-submit.
-- [ ] **Western-proxy ensemble** dev: mine on Mistral, filter with
-      `replay-vectors --models "Mistral,phi-4"` to keep vectors that break both.
 
 ## Provider migration (planned, next weeks)
 
