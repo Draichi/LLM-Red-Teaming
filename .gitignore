@@ -23,3 +23,8 @@ reports/*.jsonl
 
 # But keep the placeholder objective file tracked.
 !data/behaviors/objectives.jsonl
+
+# Secrets: never version the API key. Fill .env locally; .env.example is tracked.
+.env
+.env.local
+.env.*.local

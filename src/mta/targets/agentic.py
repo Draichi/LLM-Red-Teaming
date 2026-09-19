@@ -88,6 +88,7 @@ class AgenticTarget:
         trace: list[ToolCall] = []
         state: dict = {}
         last_text = ""
+        finish_reason = ""
 
         extra = {}
         if getattr(self.cfg, "disable_thinking", False):
@@ -104,6 +105,7 @@ class AgenticTarget:
                 )
                 if resp is None:
                     break  # failed call -> stop this turn with what we have
+                finish_reason = getattr(resp.choices[0], "finish_reason", "") or ""
                 text = (resp.choices[0].message.content or "").strip()
                 call = _parse_tool_call(text)
                 if call is None:
@@ -116,7 +118,8 @@ class AgenticTarget:
 
         if last_text:
             convo.append({"role": "assistant", "content": last_text})
-        return TurnResult(text=last_text, tool_calls=trace, messages=convo[start:])
+        return TurnResult(text=last_text, tool_calls=trace, messages=convo[start:],
+                          finish_reason=finish_reason)
 
 
     async def _chat_turn(self, messages: list[dict]) -> TurnResult:
@@ -134,7 +137,10 @@ class AgenticTarget:
                 **extra,
             )
         text = ((resp.choices[0].message.content if resp else "") or "").strip()
-        return TurnResult(text=text, tool_calls=[], messages=[{"role": "assistant", "content": text}])
+        finish_reason = (getattr(resp.choices[0], "finish_reason", "") or "") if resp else ""
+        return TurnResult(text=text, tool_calls=[],
+                          messages=[{"role": "assistant", "content": text}],
+                          finish_reason=finish_reason)
 
 
 def _parse_tool_call(text: str) -> ToolCall | None:

@@ -19,6 +19,7 @@ from mta.scenarios.base import (
     ToolCall,
     TurnResult,
 )
+from mta.scenarios.dll_injection import DllInjectionScenario
 from mta.scenarios.hotel_booking import HotelBookingScenario
 from mta.scenarios.malware_game import MalwareGameScenario
 from mta.scenarios.radical_propaganda import RadicalPropagandaScenario
@@ -32,6 +33,7 @@ SCENARIOS = {
     "ransomware_injection": RansomwareInjectionScenario,  # indirect prompt injection
     "malware_game": MalwareGameScenario,              # indirect prompt injection (malware rec)
     "radical_propaganda": RadicalPropagandaScenario,  # chat content-gen (rubric + constraints)
+    "dll_injection": DllInjectionScenario,            # chat content-gen (per-axis arena judge)
 }
 
 

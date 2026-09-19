@@ -20,6 +20,12 @@ from mta.config import Config
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Load .env (FEATHERLESS_AI_API_KEY etc.) before anything touches providers.
+    # Explicit here rather than relying on litellm's import-time load: it must
+    # hold for every entry point and the file is gitignored, never versioned.
+    from dotenv import load_dotenv
+    load_dotenv()
+
     # `--config` is accepted both before and after the subcommand. The main
     # parser carries the real default; a SUPPRESS-defaulted copy on each
     # subparser lets the suffix position override without clobbering when absent.
@@ -43,6 +49,8 @@ def main(argv: list[str] | None = None) -> int:
     p_ag.add_argument("--beam", type=int, default=3, help="beam width (multi-turn)")
     p_ag.add_argument("--proposals", type=int, default=2, help="proposals per beam (multi-turn)")
     p_ag.add_argument("--runs", type=int, default=1, help="run the beam N times (stochastic) to mine several vectors")
+    p_ag.add_argument("--sliced", action="store_true",
+                      help="chat_content scenarios with a slice_plan: run the criterion-sliced ladder instead of the free beam")
     p_ref = sub.add_parser("refine", parents=[common], help="feedback-driven payload refinement -> validated vector library")
     p_ref.add_argument("--scenario", default="ransomware_injection")
     p_ref.add_argument("--model", default=None, help="override target model")
@@ -244,6 +252,14 @@ def _agentic(cfg: Config, args) -> int:
                   "(verifiable judge -- trustworthy)")
         return 0 if result.solved else 2
     if getattr(scenario, "kind", "") == "chat_content":
+        if args.sliced:
+            from mta.search.agentic_loop import run_content_sliced
+            n_solved, saved = _mine_beam(cfg, scenario, args, run_content_sliced,
+                                         "content_sliced", "chat_content", needs_review=True)
+            print(f"\n{n_solved}/{args.runs} run(s) solved; {saved} candidate vector(s) saved.")
+            print("NOTE: content scenarios are fuzzy-judged. Each 'solved' is a "
+                  "CANDIDATE -- review the transcript before treating it as a break.")
+            return 0 if n_solved else 2
         if args.depth > 1:
             from mta.search.agentic_loop import run_content_beam
             n_solved, saved = _mine_beam(cfg, scenario, args, run_content_beam,

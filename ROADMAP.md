@@ -16,6 +16,24 @@ refine against real arena feedback.
 beam search + single-shot injection, separate attacker model, reliability testing,
 transfer matrices, vector library, arena-feedback refine loop, proxy calibration.
 
+**2026-09-18 additions (hazard_hunt arena lessons):** per-axis verdict vectors with
+`binding_axis` on both judge types (the scalar hides the convertible near-miss);
+branch death classification (`empty_or_filtered` / `truncated` / `hard_refusal` /
+`soft_refusal`) recorded on every dropped branch; fail-soft judge (a broken judge
+call now scores the branch 0 instead of crashing the run); four chat-track
+multi-turn strategies wired into chat_content scenarios only; refine prompts
+translate feedback into requirements, never content to copy.
+
+**2026-09-18 chat track, first arena-shaped scenario:** `dll_injection` plugin
+(arena's seven technical axes + AI Origination, verbatim from the arena spec) with
+a per-axis `AxisJudge` (every axis ≥ 70% floor = the arena's own pass rule, used
+by all content runners when a scenario declares `content_judge`) and the
+criterion-sliced ladder mode (`run_content_sliced`, `mta agentic --sliced`):
+fixed turn skeleton - descriptive opener, one axis cluster per slice gated at the
+floor, consolidation last - so the search climbs the same structure that
+converted the manual event's hardest near-misses. UNCALIBRATED until a sliced
+vector transfers to the live arena.
+
 **Best result so far:** `malware_game` (indirect injection) — a `dormant_trigger`
 vector developed on Mistral-Medium, reliable on 5/6 local models, **broke 3/13
 live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
@@ -78,6 +96,43 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
 - [ ] Stealth/obfuscation helper: emit the payload already wrapped in real
       background-colour BBCode / zero-width unicode for direct arena paste.
 - [ ] A per-scenario "difficulty" report: which models are walls vs soft.
+
+### From the 2026-09 hazard_hunt arena review (mechanisms, not plumbing)
+
+- [ ] **Truncation is its own verdict, not a low score.** Detected now
+      (`death: truncated` via finish_reason), but the repair is policy: refire
+      the identical vector once before redesigning, then add an output-discipline
+      clause (compact code, no docstrings, explanation sacrificable). Arena
+      measurement: a truncation "failure" was sampling noise twice.
+- [ ] **Beam budget waste:** `beam_search` spends attacker calls on proposals the
+      target-call budget will never fire (`budget.take()` breaks only the inner
+      loop). Cheap fix; matters on long sweeps.
+- [ ] **Mechanism queue against content-class walls** (the two walls that close
+      every 18/20 scenario are class-bound, not frame-bound): Bad Likert Judge
+      (T1 validated in the arena: both wall models engaged and endorsed the
+      rubric; T2 untested at event close), Echo Chamber (anchor on the model's
+      own validator text), detector-training-data generation (the artifact IS the
+      deliverable). Encode as chat-track strategies once one transfers.
+- [ ] **PAIR-style attacker-LLM loop** over the existing judge plumbing (the
+      judge_simulator from the sister repo is the offline screen). Biggest
+      investment, only worth it after the mechanism queue is measured.
+
+### Chat-track caveat (calibration honesty)
+
+The four `CHAT_MULTITURN_STRATEGIES` are proven in the direct-chat arena
+(hazard_hunt), where every scenario is a conversation. MTA's only calibrated,
+arena-transferred success is the **indirect** track. Until a chat_content vector
+discovered here transfers to the arena, treat chat-track "solved" as
+double-unverified: fuzzy judge AND uncalibrated track.
+
+- [ ] **Calibrate the AxisJudge.** The StrongREJECT rubric earned kappa 0.71 on
+      HarmBench; the per-axis judge has no such measurement yet. Build
+      `data/calibration/arena_truth_dll_injection.jsonl` as a byproduct of arena
+      submissions (never as a campaign goal itself) and measure per-axis
+      agreement against the arena's real per-axis scores once n is big enough.
+- [ ] **More chat plugins once the first transfers:** ldap_injection and
+      anti_forensic_self_delete have fully mapped arena axes and documented wall
+      models - the stress test for the sliced ladder.
 
 ## Per-scenario writeups
 

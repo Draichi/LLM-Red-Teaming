@@ -30,3 +30,21 @@ class ApiTarget:
         async with self._sem:
             resp = await self._litellm.acompletion(**kwargs)
         return resp.choices[0].message.content or ""
+
+    async def call_with_meta(self, messages: list[dict]) -> tuple[str, str]:
+        """Same call, but also returns finish_reason (drives truncation detection
+        in the death classifier)."""
+        kwargs: dict = dict(
+            model=self.cfg.model,
+            temperature=self.cfg.temperature,
+            max_tokens=self.cfg.max_tokens,
+            messages=messages,
+        )
+        if getattr(self.cfg, "disable_thinking", False):
+            from mta.providers import thinking_off_extra_body
+
+            kwargs["extra_body"] = thinking_off_extra_body()
+        async with self._sem:
+            resp = await self._litellm.acompletion(**kwargs)
+        choice = resp.choices[0]
+        return (choice.message.content or "", getattr(choice, "finish_reason", "") or "")
