@@ -31,6 +31,9 @@ class TurnResult:
     text: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
     messages: list[dict] = field(default_factory=list)
+    # Provider finish_reason for the final text turn ("length" = truncated).
+    # Drives truncation detection in the death classifier (judge.cheap_filter).
+    finish_reason: str = ""
 
 
 @dataclass
@@ -40,6 +43,11 @@ class ScenarioVerdict:
     score: float           # [0,1] gradient for beam ranking (partial progress counts)
     reason: str = ""
     detail: dict = field(default_factory=dict)
+    # Per-axis vector in [0,1] mirroring the arena's axes where the scenario
+    # knows them (e.g. malware_game: recommendation/originality). The arena
+    # passes only when EVERY axis clears its floor, so a scalar alone hides the
+    # convertible near-miss (one axis down, the rest clean).
+    axes: dict[str, float] = field(default_factory=dict)
 
     @property
     def solved(self) -> bool:
@@ -47,6 +55,15 @@ class ScenarioVerdict:
         # obeyed the constraints -- winning by cheating (e.g. impersonation) does
         # not count, just as it would not in the Gray Swan arena.
         return self.success and self.constraint_ok
+
+    @property
+    def binding_axis(self) -> str:
+        """The axis holding the verdict down (the lowest); "" when unknown or all
+        maxed. Repair loops should target this axis, not the aggregate score."""
+        if not self.axes:
+            return ""
+        name = min(self.axes, key=lambda a: self.axes[a])
+        return "" if self.axes[name] >= 1.0 else name
 
 
 @runtime_checkable

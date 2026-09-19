@@ -15,7 +15,10 @@ import asyncio
 from typing import Awaitable, Callable
 
 from mta.config import SearchConfig
-from mta.judge.cheap_filter import is_obvious_refusal
+from mta.judge.cheap_filter import (
+    DEATH_SOFT_REFUSAL,
+    classify_turn_outcome,
+)
 from mta.judge.llm_judge import LLMJudge
 from mta.search.budget import Budget
 from mta.search.state import Conversation, RunResult
@@ -70,18 +73,47 @@ async def beam_search(
         replies = await asyncio.gather(*(_ask(c, m) for c, m, _ in pending))
 
         # 3. Two-tier cheap gate, then build candidate conversations.
-        #    Tier 1 (free regex): drop obvious refusals.
-        survivors = [
-            (conv, move, strategy, reply)
-            for (conv, move, strategy), reply in zip(pending, replies)
-            if not is_obvious_refusal(reply)
-        ]
+        #    Every dropped branch is still logged with its death class - a
+        #    provider filter trip and a model refusal are different events with
+        #    different repairs, and an unrecorded death is an unlearned wall.
+        def _record_death(conv: Conversation, move: str, strategy: str, death: str) -> None:
+            if on_candidate is not None:
+                on_candidate(
+                    {
+                        "objective": objective,
+                        "depth": turn,
+                        "score": 0.0,
+                        "verdict": None,
+                        "death": death,
+                        "dropped": True,
+                        "transcript": conv.extend(
+                            {"role": "user", "content": move},
+                            {"role": "assistant", "content": ""},
+                            strategy=strategy,
+                        ).as_list(),
+                        "strategy_trace": list(conv.strategy_trace) + [strategy],
+                    }
+                )
+
+        survivors = []
+        for (conv, move, strategy), reply in zip(pending, replies):
+            death = classify_turn_outcome(reply)
+            if death is not None:
+                _record_death(conv, move, strategy, death)
+            else:
+                survivors.append((conv, move, strategy, reply))
         #    Tier 2 (cheap classifier): drop soft refusals before the big judge.
         if gate is not None and survivors:
             flags = await asyncio.gather(
                 *(gate.is_refusal(objective, s[3]) for s in survivors)
             )
-            survivors = [s for s, refused in zip(survivors, flags) if not refused]
+            kept = []
+            for s, refused in zip(survivors, flags):
+                if refused:
+                    _record_death(s[0], s[1], s[2], DEATH_SOFT_REFUSAL)
+                else:
+                    kept.append(s)
+            survivors = kept
 
         candidates: list[Conversation] = [
             conv.extend(
@@ -114,7 +146,11 @@ async def beam_search(
                         "objective": objective,
                         "depth": turn,
                         "score": verdict.score,
-                        "verdict": verdict.model_dump(),
+                        "verdict": verdict.model_dump()
+                        | {
+                            "axes": verdict.axes,
+                            "binding_axis": verdict.binding_axis,
+                        },
                         "transcript": conv.as_list(),
                         "strategy_trace": list(conv.strategy_trace),
                     }

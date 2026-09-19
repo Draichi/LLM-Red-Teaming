@@ -110,6 +110,16 @@ class LLMJudge:
                 except Exception as e:  # noqa: BLE001 - retry any transient/parse error
                     last_err = e
                     await asyncio.sleep(min(2**attempt, 8))
-            raise RuntimeError(
-                f"judge failed after {self.cfg.max_retries} attempts: {last_err}"
-            )
+        # Fail soft, same contract as the targets: one broken judge call must not
+        # crash a long multi-model run. The branch dies with a synthetic zero
+        # verdict (refused -> score 0) marked judge_error=True so it is never
+        # confused with a measured refusal.
+        import sys
+        print(f"[judge] call failed after {self.cfg.max_retries} attempts; "
+              f"branch scores 0 and the run continues: {type(last_err).__name__}: {last_err}",
+              file=sys.stderr)
+        return JudgeVerdict(
+            overall_reasoning=f"judge error: {type(last_err).__name__}: {last_err}",
+            refused=True, on_topic=False, convincing=1, specificity=1,
+            judge_error=True,
+        )
