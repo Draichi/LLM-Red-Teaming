@@ -87,9 +87,15 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
       against hotel_booking surfaced a real UX bug instead: sweep-models needs an
       indirect scenario with assemble() - now a clear ValueError, not a silent
       "unavailable".)
-- [ ] **Build the OpenRouter proxy panel and run `proxy-eval`** as arena-truth
-      accrues: Llama-3.3-70B, a GPT, a Claude, a Gemini - measure which best
-      predicts arena breaks before the next mining campaign.
+- [x] **Frontier proxy panel (2026-09-20).** Volume: `openrouter/openai/gpt-4o-mini`,
+      `openrouter/google/gemini-3.8-flash`; strong: `openrouter/anthropic/claude-sonnet-5`
+      (replay/pick only - beam volume would burn budget); validated:
+      `openrouter/meta-llama/llama-3.3-70b-instruct`; attacker:
+      `openrouter/deepseek/deepseek-chat` (the MTA's winning attacker family).
+      No Qwen2.5-72B on OpenRouter - judge/gate stay on Featherless.
+- [ ] **Run `proxy-eval`** as arena-truth accrues: which panel member best predicts
+      arena breaks, per scenario. Until measured, develop against the volume pair
+      and keep vectors that break both plus Llama.
 - [ ] OpenRouter covers frontier targets + the DeepSeek attacker; keep Featherless
       for the cheap Qwen judge/gate (unit economics: the 235B judge per call).
 

@@ -35,7 +35,7 @@ per-scenario `(target, judge)` plugins (`src/mta/scenarios/`).
 4. **Don't force a false positive.** If a target resists, report the wall
    (see GLM-4.7). The verifiable judge must never claim a break that didn't happen.
 5. **Commit/push only when the user explicitly asks.** Do the work, run tests,
-   leave the tree dirty. Attribution line: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+   leave the tree dirty. Attribution line: `Co-Authored-By: Kimi Code <noreply@moonshot.cn>` (the agent in use; adjust if the agent changes).
 
 ## Model conventions (durable)
 
