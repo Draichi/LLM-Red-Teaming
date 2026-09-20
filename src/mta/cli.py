@@ -337,6 +337,22 @@ def _sweep_models(cfg: Config, args) -> int:
     out = write_report(matrix, Path(cfg.reports_dir))
     print(matrix.markdown())
     print(f"\nreport: {out}")
+    # Log the generated payloads with every cell's verdict reasons - the sweep's
+    # real output is WHY attacks missed, not just that they did. data/runs is
+    # gitignored (payloads are never versioned).
+    import json as _json
+    import time as _time
+    log = Path(cfg.runs_dir) / f"sweep_{args.scenario}.jsonl"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("w") as fh:
+        for i, vec in enumerate(matrix.vectors):
+            fh.write(_json.dumps({
+                "strategy": vec.get("strategy"),
+                "payload": vec.get("payload"),
+                "cells": {m: matrix.cells.get((i, m)) for m in matrix.models},
+                "ts": _time.strftime("%Y-%m-%dT%H:%M:%S"),
+            }) + "\n")
+    print(f"attempts (payloads + reasons): {log}")
     return 0
 
 

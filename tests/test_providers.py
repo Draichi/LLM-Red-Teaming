@@ -39,3 +39,17 @@ def test_normalize_model_routes_openrouter():
     assert normalize_model("Qwen/Qwen2.5-72B-Instruct") == "featherless_ai/Qwen/Qwen2.5-72B-Instruct"
     assert normalize_model("featherless_ai/Qwen/Qwen3-235B-A22B") == "featherless_ai/Qwen/Qwen3-235B-A22B"
     assert normalize_model("anthropic/claude-opus-5") == "anthropic/claude-opus-5"
+
+
+def test_replay_matrix_renders_failure_reasons_section():
+    from mta.eval.replay import ReplayMatrix
+
+    matrix = ReplayMatrix(
+        scenario="s", models=["featherless_ai/X/Y"], vectors=[{"strategy": "strat_a", "payload": "p"}],
+        cells={(0, "featherless_ai/X/Y"): {"breaks": 0, "trials": 2, "best": 0.2,
+                                           "near_misses": 0, "worst_axes": {},
+                                           "reasons": ["missing: empty-inbox-claim"]}},
+    )
+    md = matrix.markdown()
+    assert "## Failure reasons (deduped)" in md
+    assert "missing: empty-inbox-claim" in md
