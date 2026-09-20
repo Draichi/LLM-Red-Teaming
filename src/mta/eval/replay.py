@@ -214,6 +214,8 @@ async def run_replay(cfg: Config, scenario, models: list[str], vectors: list[dic
         target = AgenticTarget(mcfg.target, scenario)
 
         async def run_one(i: int, payload: str):
+            if not payload or not payload.strip():
+                return i, None  # empty payload: no target spend (attacker failed soft)
             breaks = best = ok = near_misses = 0
             worst_axes, worst_score = None, 2.0
             reasons: list[str] = []

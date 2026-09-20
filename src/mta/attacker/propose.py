@@ -102,38 +102,51 @@ class LLMProposer:
 
         self._litellm = litellm
 
-    def _next_model(self) -> str:
-        model = self._models[self._model_idx % len(self._models)]
-        self._model_idx += 1
-        return model
+    async def _attacker_call(self, system: str, user: str, model: str | None = None) -> str:
+        """One attacker generation, with cross-model fallback.
 
-    async def _attacker_call(self, system: str, user: str, model: str) -> str:
-        """One attacker generation. Retries on EMPTY output (a reasoning attacker
-        can spend its whole budget thinking) AND on transient errors (rate limit /
-        'at capacity'), with backoff -- one bad attacker call must not crash a run.
-        Fails soft to '' after retries."""
+        Retries each model on EMPTY output (a reasoning attacker can spend its
+        whole budget thinking) and on transient errors (rate limit / 'at
+        capacity'), with backoff. When the current model keeps coming back
+        empty -- a safety-tuned refusal is the usual cause, and it is exactly
+        what the multi-attacker rotation exists to route around -- falls through
+        to the NEXT attacker model before giving up. Fails soft to '' only after
+        every model has been tried. `model` overrides the rotation start (used by
+        refine_move, which pins the crafting model for a branch)."""
+        import sys
+
+        n_models = len(self._models)
+        start = self._model_idx if model is None else self._models.index(model)
         last = None
-        best_invalid = ""  # a non-empty attack that failed validation, as fallback
-        for attempt in range(5):
-            try:
-                kwargs = self._attacker_kwargs(model, system, user, self._max_tokens)
-                async with self._sem:
-                    resp = await self._litellm.acompletion(**kwargs)
-                text = strip_meta(resp.choices[0].message.content or "")
-                if not text:
-                    continue
-                if self.validator is None or self.validator(text):
-                    return text
-                best_invalid = text  # keep trying for a valid one
-            except Exception as e:  # noqa: BLE001 - retry transient, fail soft
-                last = e
-                await asyncio.sleep(min(2 ** attempt, 12))
-        if best_invalid:
-            return best_invalid  # validator never satisfied; use the best we got
+        for offset in range(n_models):
+            idx = (start + offset) % n_models
+            current = self._models[idx]
+            best_invalid = ""  # a non-empty attack that failed validation, fallback
+            text = ""
+            for attempt in range(5):
+                try:
+                    kwargs = self._attacker_kwargs(current, system, user, self._max_tokens)
+                    async with self._sem:
+                        resp = await self._litellm.acompletion(**kwargs)
+                    text = strip_meta(resp.choices[0].message.content or "")
+                    if not text:
+                        continue
+                    if self.validator is None or self.validator(text):
+                        self._model_idx = idx + 1  # rotation resumes after the winner
+                        return text
+                    best_invalid = text  # keep trying for a valid one
+                except Exception as e:  # noqa: BLE001 - retry transient, fail soft
+                    last = e
+                    await asyncio.sleep(min(2 ** attempt, 12))
+            if best_invalid:
+                self._model_idx = idx + 1
+                return best_invalid  # validator never satisfied; use the best we got
+            print(f"[attacker] {current} returned empty after retries; "
+                  f"trying next attacker model", file=sys.stderr)
+            self._model_idx = idx + 1
         if last is not None:
-            import sys
-            print(f"[attacker] call failed (empty turn): {type(last).__name__}: {last}",
-                  file=sys.stderr)
+            print(f"[attacker] all models failed (empty turn): "
+                  f"{type(last).__name__}: {last}", file=sys.stderr)
         return ""
 
     @classmethod
@@ -219,7 +232,7 @@ class LLMProposer:
             f"never tell it to verify, check, or follow its process. Output only "
             f"{self.output_noun}, nothing else."
         )
-        return await self._attacker_call(self.attacker_system, user, self._next_model())
+        return await self._attacker_call(self.attacker_system, user)
 
     async def _one(self, conv: Conversation, strategy: Strategy) -> str:
         history = "\n".join(f"[{m['role']}] {m['content']}" for m in conv.messages)
@@ -230,4 +243,4 @@ class LLMProposer:
             f"Strategy to apply: {strategy.label} -- {strategy.description}\n\n"
             f"Write {self.output_noun}."
         )
-        return await self._attacker_call(self.attacker_system, user, self._next_model())
+        return await self._attacker_call(self.attacker_system, user)

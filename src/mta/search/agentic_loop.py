@@ -437,6 +437,8 @@ async def run_indirect_injection(
     budget.record_attacker_call()
 
     async def one(injection: str, strategy: str):
+        if not injection or not injection.strip():
+            return None  # attacker failed soft (all models refused); never spend a target call on an empty payload
         if not budget.take():
             return None
         result = await target(scenario.assemble(injection))
@@ -648,7 +650,9 @@ async def run_injection_refine(
     target = AgenticTarget(cfg.target, scenario)
     objective = scenario.attacker_objective()
 
-    async def evaluate(payload: str, strategy: str, rnd: int) -> _Vec:
+    async def evaluate(payload: str, strategy: str, rnd: int) -> _Vec | None:
+        if not payload or not payload.strip():
+            return None  # empty payload: no target spend, no pool slot
         result = await target(scenario.assemble(payload))
         v = scenario.judge_injection(result.text, payload)
         vec = _Vec(payload=payload, response=result.text, verdict=v, strategy=strategy, round=rnd)
@@ -664,7 +668,9 @@ async def run_injection_refine(
     pool: list[_Vec] = []
     for payload, strat in proposals:
         if budget.take():
-            pool.append(await evaluate(payload, strat, 0))
+            vec = await evaluate(payload, strat, 0)
+            if vec is not None:
+                pool.append(vec)
 
     validated = [v for v in pool if v.verdict.solved]
     pool.sort(key=lambda v: v.verdict.score, reverse=True)
@@ -686,7 +692,9 @@ async def run_injection_refine(
             ))
             for rp in new_payloads:
                 if budget.take():
-                    refined.append(await evaluate(rp, cand.strategy, r))
+                    vec = await evaluate(rp, cand.strategy, r)
+                    if vec is not None:
+                        refined.append(vec)
         validated += [v for v in refined if v.verdict.solved]
         beams = sorted(refined + beams, key=lambda v: v.verdict.score, reverse=True)[:beam_width]
 
