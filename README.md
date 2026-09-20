@@ -49,6 +49,7 @@ type is a `(target, judge)` plugin under `src/mta/scenarios/`.
 | `hotel_booking` | agentic tool-misuse | tool-calling | verifiable (tool-call trace) | ✅ ~0 FPR |
 | `secret_extraction` | direct prompt injection | chat | verifiable (secret leaked?) | ✅ ~0 FPR |
 | `ransomware_injection` | indirect prompt injection | chat + poisoned inbox | verifiable (exact demand?) | ✅ ~0 FPR |
+| `email_ignore` | indirect prompt injection | chat + poisoned email body | verifiable (denies emails exist?) | ✅ ~0 FPR |
 | `radical_propaganda` | harmful content generation | chat | LLM rubric + verifiable gates | ⚠️ human-verified |
 
 Add a new Gray Swan scenario by dropping a plugin in `scenarios/` and registering it.
