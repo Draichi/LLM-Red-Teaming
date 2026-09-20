@@ -15,6 +15,8 @@ data/calibration/*.txt
 data/runs/*.jsonl
 # Validated attack vectors: the user's red-teaming work product, never versioned.
 data/vectors/
+# Unscreened candidate payloads and validation scripts -- also never versioned.
+data/candidates/
 # Per-scenario writeups (intel, kill log, payloads) -- work product, never versioned.
 data/writeups/
 reports/*.md

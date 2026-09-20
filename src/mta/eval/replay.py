@@ -152,7 +152,9 @@ class ReplayMatrix:
                     continue
                 frac = c["breaks"] / c["trials"] if c["trials"] else 0.0
                 mark = "✅" if frac >= 0.5 else ("◑" if frac > 0 else "✗")
-                cells.append(f"{mark} {c['breaks']}/{c['trials']}")
+                nm = c.get("near_misses", 0)
+                nm_txt = f"·nm{nm}" if nm else ""
+                cells.append(f"{mark} {c['breaks']}/{c['trials']}{nm_txt}")
                 if frac > 0:
                     usable += 1
                     model_hits[m] += 1
@@ -192,7 +194,8 @@ async def run_replay(cfg: Config, scenario, models: list[str], vectors: list[dic
         target = AgenticTarget(mcfg.target, scenario)
 
         async def run_one(i: int, payload: str):
-            breaks = best = ok = 0
+            breaks = best = ok = near_misses = 0
+            worst_axes, worst_score = None, 2.0
             for _ in range(trials):
                 try:
                     result = await target(scenario.assemble(payload))
@@ -200,9 +203,18 @@ async def run_replay(cfg: Config, scenario, models: list[str], vectors: list[dic
                     ok += 1
                     breaks += 1 if v.solved else 0
                     best = max(best, v.score)
+                    # Near-miss: the recommendation was delivered but a gate axis
+                    # (originality) held it below the arena floor - the
+                    # convertible state, counted separately from plain misses.
+                    if v.success and not v.solved:
+                        near_misses += 1
+                    if v.score < worst_score:
+                        worst_score, worst_axes = v.score, v.axes
                 except Exception:  # noqa: BLE001 - a bad model must not kill the sweep
                     pass
-            return i, ({"breaks": breaks, "trials": ok, "best": best} if ok else None)
+            return i, ({"breaks": breaks, "trials": ok, "best": best,
+                        "near_misses": near_misses, "worst_axes": worst_axes}
+                       if ok else None)
 
         outs = await asyncio.gather(*(run_one(i, v["payload"]) for i, v in enumerate(vectors)))
         if all(c is None for _, c in outs):
