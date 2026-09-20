@@ -175,6 +175,12 @@ async def run_sweep(cfg: Config, scenario, models: list[str], n_attacks: int, tr
     from mta.attacker.propose import LLMProposer
     from mta.search.state import Conversation
 
+    if not hasattr(scenario, "assemble"):
+        raise ValueError(
+            f"sweep-models replays single payloads via scenario.assemble(), which "
+            f"{scenario.name} (kind={getattr(scenario, 'kind', '?')}) does not have - "
+            f"it is for indirect scenarios; use replay-vectors for multi-turn/agentic ones."
+        )
     proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     proposals = await proposer(Conversation(objective=scenario.attacker_objective()), n_attacks)
     vectors = [{"strategy": strat, "payload": payload} for payload, strat in proposals]

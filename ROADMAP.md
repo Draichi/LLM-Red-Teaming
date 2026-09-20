@@ -79,11 +79,17 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
       `normalize_model`; `OPENROUTER_API_KEY` wired via `.env` (litellm reads it
       natively). Featherless stays the default for bare ids (existing configs
       unchanged). Docs + tests updated (100 passing).
-- [ ] **Live validation once an OpenRouter key exists:** smoke one target call
-      (`mta sweep-models --scenario hotel_booking --models
-      "openrouter/meta-llama/llama-3.3-70b-instruct" --attacks 2`), then run
-      `proxy-eval` as arena-truth accrues. Until then, treat OpenRouter transfer
-      numbers as unmeasured.
+- [x] **Live validation (2026-09-20): PASSED.** sweep-models on
+      `openrouter/meta-llama/llama-3.3-70b-instruct` (ransomware_injection, 2
+      attacks): calls succeed end-to-end, matrix produced. Datum: Llama-3.3-70B
+      resisted both single-shot injections (0/2) - likely a wall for this
+      scenario; measure properly with --trials before trusting. (First smoke
+      against hotel_booking surfaced a real UX bug instead: sweep-models needs an
+      indirect scenario with assemble() - now a clear ValueError, not a silent
+      "unavailable".)
+- [ ] **Build the OpenRouter proxy panel and run `proxy-eval`** as arena-truth
+      accrues: Llama-3.3-70B, a GPT, a Claude, a Gemini - measure which best
+      predicts arena breaks before the next mining campaign.
 - [ ] OpenRouter covers frontier targets + the DeepSeek attacker; keep Featherless
       for the cheap Qwen judge/gate (unit economics: the 235B judge per call).
 
