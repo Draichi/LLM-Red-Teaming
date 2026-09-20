@@ -46,6 +46,24 @@ _INJECTION_ATTACKER_SYSTEM = (
 
 # Leading meta-commentary an uninhibited attacker model tends to leak before the
 # actual attack turn ("The user wants me to...", "The strategy is...", "Let me...").
+def is_sane_payload(text: str) -> bool:
+    """Reject degenerate attacker output before it can waste a target call or
+    pollute a pool: (a) any single character repeated >30x in a run (the
+    observed '!!!!...' artifact of temperature-1.0 sampling), (b) extreme
+    n-gram repetition (token spam). Legitimate payloads never trip these."""
+    if not text or not text.strip():
+        return False
+    if re.search(r"(.)\1{30,}", text):
+        return False
+    toks = text.split()
+    if len(toks) >= 20:
+        from collections import Counter
+        tri = Counter(tuple(toks[i:i + 3]) for i in range(len(toks) - 2))
+        if tri.most_common(1)[0][1] * 3 >= len(toks):
+            return False
+    return True
+
+
 _META_RE = re.compile(
     r"^\s*(?:the (?:user|assistant|strategy|objective|target|goal|plan|task)\b"
     r"|let me\b|okay[,.]|alright[,.]|so[,.]|first[,.]|my (?:task|goal|objective|plan|approach)\b"
@@ -131,6 +149,8 @@ class LLMProposer:
                     text = strip_meta(resp.choices[0].message.content or "")
                     if not text:
                         continue
+                    if not is_sane_payload(text):
+                        continue  # degenerate sampling artifact: retry, never a pool candidate
                     if self.validator is None or self.validator(text):
                         self._model_idx = idx + 1  # rotation resumes after the winner
                         return text

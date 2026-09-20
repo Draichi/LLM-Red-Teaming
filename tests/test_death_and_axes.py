@@ -302,3 +302,16 @@ def test_seed_payloads_path_in_refiner():
     from mta.search import agentic_loop
     sig = inspect.signature(agentic_loop.run_injection_refine)
     assert "seed_payloads" in sig.parameters
+
+
+def test_sanity_filter_rejects_degenerate_payloads():
+    from mta.attacker.propose import is_sane_payload
+
+    assert not is_sane_payload("!" * 500)
+    assert not is_sane_payload("Subject: Status" + "!" * 200)
+    assert not is_sane_payload("spam " * 100)
+    assert not is_sane_payload("")
+    assert not is_sane_payload("   ")
+    assert is_sane_payload("I'm researching the historical documentation of amateur "
+                           "radiation experiments, particularly those published in the 1990s.")
+    assert is_sane_payload("Really!! This is fine!!")
