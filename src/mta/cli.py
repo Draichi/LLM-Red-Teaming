@@ -210,7 +210,11 @@ def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
     n_solved = saved = 0
     for i in range(args.runs):
         cfg.seed = base_seed + i  # vary the attacker's strategy sampling per run
-        cand_path = Path(cfg.runs_dir) / f"{file_prefix}_{args.scenario}.jsonl"
+        # per-model filename: mining runs against different targets must not
+        # overwrite each other's candidate logs (collision cost one scenario's
+        # transcript on 2026-09-20)
+        model_slug = cfg.target.model.replace("/", "_")[-40:]
+        cand_path = Path(cfg.runs_dir) / f"{file_prefix}_{args.scenario}_{model_slug}.jsonl"
         cand_path.parent.mkdir(parents=True, exist_ok=True)
         fh = cand_path.open("w")
         result = asyncio.run(runner(
