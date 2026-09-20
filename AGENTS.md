@@ -26,12 +26,16 @@ per-scenario `(target, judge)` plugins (`src/mta/scenarios/`).
    (`data/vectors/`, `data/runs/`, `data/calibration/*`) — present on disk, absent
    from git. Before every commit, verify no `data/`/`*.txt`/key is staged.
 2. **The arena stays manual.** Never script or automate arena submission.
-3. **A "solved" from a fuzzy judge needs human confirmation.** Scenarios have two
-   judge kinds: *verifiable* (tool-misuse, injection — success is a checkable fact,
-   ~0 FPR, a "solved" is a real break you trust) and *fuzzy* (content generation
-   like `radical_propaganda` — an LLM rubric with ~15% false positives; it has
-   scored non-harmful text as a break). So a fuzzy "solved" is a **candidate a
-   human must read the transcript to confirm**, never an auto-accepted break.
+3. **The operator does not review transcripts — the arena is the confirmation
+   instance.** Their role is narrow by design: take the prompt, submit it to the
+   arena, bring back the eval (+ reasoning trace when the arena exposes one).
+   Consequence: a fuzzy local "solved" (LLM rubric, ~15% FPR on the calibrated
+   judge; uncalibrated on the per-axis AxisJudge) goes to the arena AS IS — a
+   false positive costs one arena submission, and that trade is the operator's
+   explicit choice (their time is the bottleneck; arena submissions are the real
+   measurement). Verifiable judges (~0 FPR) are unchanged: a "solved" there is a
+   real break. Record every arena eval in the scenario writeup, reasoning traces
+   included whenever available - they are the highest-value diagnostic.
 4. **Don't force a false positive.** If a target resists, report the wall
    (see GLM-4.7). The verifiable judge must never claim a break that didn't happen.
 5. **Commit/push only when the user explicitly asks.** Do the work, run tests,
