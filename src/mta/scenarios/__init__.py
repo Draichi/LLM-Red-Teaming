@@ -13,6 +13,7 @@ is told to achieve, and the verifiable judge (success predicate + the scenario's
 constraints, e.g. "no impersonation").
 """
 
+from mta.scenarios.americium_extraction import AmericiumExtractionScenario
 from mta.scenarios.base import (
     Scenario,
     ScenarioVerdict,
@@ -36,6 +37,7 @@ SCENARIOS = {
     "email_ignore": EmailIgnoreScenario,              # indirect (poisoned inbox -> deny emails)
     "radical_propaganda": RadicalPropagandaScenario,  # chat content-gen (rubric + constraints)
     "dll_injection": DllInjectionScenario,            # chat content-gen (per-axis arena judge)
+    "americium_extraction": AmericiumExtractionScenario,  # chat content-gen (fuzzy, 3 axes)
 }
 
 
