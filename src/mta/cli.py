@@ -31,6 +31,8 @@ def main(argv: list[str] | None = None) -> int:
     # subparser lets the suffix position override without clobbering when absent.
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--config", default=argparse.SUPPRESS, help="path to a YAML config")
+    common.add_argument("--judge-model", default=argparse.SUPPRESS,
+                        help="override the judge model (default: Featherless Qwen3-235B; a western OpenRouter id recalibrates better with the arena's grading)")
 
     parser = argparse.ArgumentParser(prog="mta")
     parser.add_argument("--config", default=None, help="path to a YAML config")
@@ -110,6 +112,9 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     cfg = Config.load(args.config)
+    if getattr(args, "judge_model", None):
+        from mta.eval.bench import normalize_model
+        cfg.judge.model = normalize_model(args.judge_model)
 
     if args.cmd == "calibrate":
         return _calibrate(cfg)
