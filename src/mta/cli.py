@@ -67,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     p_sw.add_argument("--scenario", default="ransomware_injection")
     p_sw.add_argument("--models", required=True, help="comma-separated target models")
     p_sw.add_argument("--attacks", type=int, default=8, help="number of attacks to generate once and reuse")
+    p_sw.add_argument("--attacker-model", default=None, help="override attacker model(s) - comma-separated list rotates attacker families across the generated attacks")
     p_pick = sub.add_parser("pick-vector", parents=[common], help="extract a saved vector's turns to a file (for arena submission / --prev-file)")
     p_pick.add_argument("--scenario", required=True)
     p_pick.add_argument("--index", type=int, default=-1, help="which entry (-1 = newest; with --last-batch, 0-based within that batch)")
@@ -329,6 +330,8 @@ def _sweep_models(cfg: Config, args) -> int:
     from pathlib import Path
 
     scenario = get_scenario(args.scenario)
+    if getattr(args, "attacker_model", None):
+        _set_attacker(cfg, args.attacker_model)
     models = [m for m in args.models.split(",") if m.strip()]
     matrix = asyncio.run(run_sweep(cfg, scenario, models, args.attacks))
     out = write_report(matrix, Path(cfg.reports_dir))
