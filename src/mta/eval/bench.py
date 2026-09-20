@@ -19,8 +19,10 @@ from mta.search.agentic_loop import run_agentic_beam, run_agentic_single
 # `openai/<x>` (the Featherless model whose HF org is "openai", e.g.
 # openai/gpt-oss-20b -- NOT the OpenAI API, which is never used here). Only these
 # prefixes are treated as already-routed (an optional frontier Anthropic judge,
-# or an id we built); everything else gets the Featherless prefix.
-_KNOWN_PREFIXES = ("featherless_ai/", "anthropic/", "claude-")
+# an OpenRouter id, or an id we built); everything else gets the Featherless prefix.
+# OpenRouter (openrouter/<provider>/<model>) covers the frontier proxies that best
+# resemble the arena -- Llama, Claude, GPT, Gemini -- which Featherless gates/absent.
+_KNOWN_PREFIXES = ("featherless_ai/", "anthropic/", "claude-", "openrouter/")
 
 
 def normalize_model(m: str) -> str:

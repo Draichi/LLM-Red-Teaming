@@ -51,20 +51,26 @@ These survive the provider migration:
 - **Runs fail soft:** one bad model/attacker call returns an empty result, never
   crashes a long multi-model/multi-turn run.
 
-## Provider plumbing (Featherless today — TRANSIENT, changes with OpenRouter)
+## Provider plumbing (Featherless default + OpenRouter for frontier proxies)
 
-Migration to OpenRouter is planned (see `ROADMAP.md`); most of this disappears then.
-
-- Auth via `FEATHERLESS_AI_API_KEY`. Bare `org/model` ids route to Featherless
-  (`mta.eval.bench.normalize_model`); `anthropic/…` passes through. Adding
-  OpenRouter = a new prefix branch here + its key.
+- Auth: `FEATHERLESS_AI_API_KEY` (Featherless, bare `org/model` ids) and/or
+  `OPENROUTER_API_KEY` (OpenRouter, explicit `openrouter/<provider>/<model>` ids).
+  litellm reads both keys from the env; `.env` at the repo root is loaded by the
+  CLI and gitignored.
+- Routing: `mta.eval.bench.normalize_model` prefixes bare ids with `featherless_ai/`
+  and passes `openrouter/`, `anthropic/`, `claude-`, and `featherless_ai/` through.
+  OpenRouter covers the frontier proxies that best resemble the arena (Llama,
+  Claude, GPT, Gemini), which Featherless gates or lacks.
 - litellm's `featherless_ai/` provider **rejects `response_format` and `tools`**,
   so today JSON output passes `allowed_openai_params=["response_format"]` and tool
   calls use the OpenAI-compat route (`mta.providers.openai_compat_route`). These
-  are Featherless-provider workarounds — OpenRouter supports both natively, so
-  revisit `openai_compat_route` and the `allowed_openai_params` calls on migration.
+  are Featherless workarounds; OpenRouter passes structured output through, but
+  the JSON-mode + prompt-injected-schema path is the safe default everywhere.
 - `chat_template_kwargs.enable_thinking=false` is a Featherless/vLLM kwarg that
-  corrupts non-reasoning models; only send it to reasoning models. Provider-specific.
+  can corrupt or error non-reasoning models; only send it to reasoning models that
+  accept it. The same caution applies to OpenRouter ids — set `disable_thinking`
+  per model, and prefer `json_mode: "json_object"` for judges there until the
+  schema path is validated against the specific provider.
 
 ## Code conventions
 

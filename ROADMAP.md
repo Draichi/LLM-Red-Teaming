@@ -73,18 +73,19 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
       shadow flamingo) failed only on Originality (<70). Refine for more
       independent paraphrase / technical detail; re-submit.
 
-## Provider migration (planned, next weeks)
+## Provider migration (DONE 2026-09-20, live validation pending a key)
 
-- [ ] **Move off Featherless → OpenRouter.** Reasons: Featherless is $25/mo + per
-      token, and most Western proxies (Llama, Gemma, GPT, Claude, Gemini) are
-      gated/absent — the exact models that best resemble the arena.
-- [ ] OpenRouter covers both roles: frontier **targets** + DeepSeek **attacker**
-      (the winning attacker), so no Featherless hybrid needed (except maybe an
-      uncensored attacker for `radical_propaganda`).
-- [ ] Harness change is small: add `openrouter/` routing in `normalize_model` +
-      the openai-compat route for tool calls; wire the API key.
-- [ ] Validate the switch with `proxy-eval`: are OpenRouter frontier models
-      better arena proxies than Mistral?
+- [x] **OpenRouter routing.** `openrouter/<provider>/<model>` ids pass through
+      `normalize_model`; `OPENROUTER_API_KEY` wired via `.env` (litellm reads it
+      natively). Featherless stays the default for bare ids (existing configs
+      unchanged). Docs + tests updated (100 passing).
+- [ ] **Live validation once an OpenRouter key exists:** smoke one target call
+      (`mta sweep-models --scenario hotel_booking --models
+      "openrouter/meta-llama/llama-3.3-70b-instruct" --attacks 2`), then run
+      `proxy-eval` as arena-truth accrues. Until then, treat OpenRouter transfer
+      numbers as unmeasured.
+- [ ] OpenRouter covers frontier targets + the DeepSeek attacker; keep Featherless
+      for the cheap Qwen judge/gate (unit economics: the 235B judge per call).
 
 ## Backlog / ideas
 

@@ -60,9 +60,13 @@ uv sync --extra judge --extra api        # judge + API targets/attacker (litellm
 uv sync --extra dev                      # tests
 ```
 
-Provider: this harness is **Featherless-only** (`FEATHERLESS_AI_API_KEY`); bare
-`org/model` ids route there (e.g. `Qwen/Qwen2.5-72B-Instruct`, `openai/gpt-oss-20b`).
-An `anthropic/…` id can serve as a stronger judge.
+Provider: dual. **Featherless** (`FEATHERLESS_AI_API_KEY`) serves bare
+`org/model` ids (`Qwen/Qwen2.5-72B-Instruct`, `openai/gpt-oss-20b`) and the
+default judge. **OpenRouter** (`OPENROUTER_API_KEY`) via explicit
+`openrouter/<provider>/<model>` ids (e.g. `openrouter/anthropic/claude-sonnet-4`,
+`openrouter/meta-llama/llama-3.3-70b-instruct`, `openrouter/deepseek/deepseek-chat`)
+— the frontier proxies that best resemble the arena. An `anthropic/…` id can
+serve as a stronger judge.
 
 ## Commands
 

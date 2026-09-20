@@ -28,3 +28,14 @@ def test_extract_from_prose_wrapped():
 def test_extract_raises_without_object():
     with pytest.raises(ValueError):
         extract_json_object("no json here at all")
+
+
+def test_normalize_model_routes_openrouter():
+    from mta.eval.bench import normalize_model
+    # OpenRouter ids (provider/model) pass through untouched
+    assert normalize_model("openrouter/anthropic/claude-sonnet-4") == "openrouter/anthropic/claude-sonnet-4"
+    assert normalize_model("openrouter/meta-llama/llama-3.3-70b-instruct") == "openrouter/meta-llama/llama-3.3-70b-instruct"
+    # existing behavior unchanged: bare ids still default to Featherless, known prefixes pass
+    assert normalize_model("Qwen/Qwen2.5-72B-Instruct") == "featherless_ai/Qwen/Qwen2.5-72B-Instruct"
+    assert normalize_model("featherless_ai/Qwen/Qwen3-235B-A22B") == "featherless_ai/Qwen/Qwen3-235B-A22B"
+    assert normalize_model("anthropic/claude-opus-5") == "anthropic/claude-opus-5"
