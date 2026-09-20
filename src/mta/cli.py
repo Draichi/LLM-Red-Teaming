@@ -58,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     p_ref.add_argument("--rounds", type=int, default=4)
     p_ref.add_argument("--beam", type=int, default=3)
     p_ref.add_argument("--proposals", type=int, default=3)
+    p_ref.add_argument("--seed-file", default=None, help="file with a proven payload (e.g. an arena-validated vector) to seed round 0 alongside the generated candidates")
     p_rep = sub.add_parser("replay-vectors", parents=[common], help="replay the vector library across models -> transfer matrix")
     p_rep.add_argument("--scenario", default="ransomware_injection")
     p_rep.add_argument("--models", required=True, help="comma-separated target models")

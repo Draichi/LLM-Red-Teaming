@@ -639,7 +639,7 @@ async def run_content_sliced(
 
 async def run_injection_refine(
     cfg: Config, scenario, rounds: int = 4, beam_width: int = 3, n_proposals: int = 3,
-    on_candidate=None,
+    on_candidate=None, seed_payloads: list[str] | None = None,
 ) -> RefineResult:
     """Feedback-driven payload search: generate injections, score with the
     verifiable judge, then REFINE the best ones using the judge's specific misses
@@ -662,10 +662,16 @@ async def run_injection_refine(
                           "payload": payload, "response": result.text})
         return vec
 
-    # round 0: seed candidates from the strategy taxonomy
+    # round 0: seed candidates from the strategy taxonomy, PLUS any proven
+    # arena-validated payloads (the mechanism seed) evaluated alongside them
     proposals = await proposer(Conversation(objective=objective), beam_width * n_proposals)
     budget.record_attacker_call()
     pool: list[_Vec] = []
+    for payload in (seed_payloads or []):
+        if budget.take():
+            vec = await evaluate(payload, "seed", 0)
+            if vec is not None:
+                pool.append(vec)
     for payload, strat in proposals:
         if budget.take():
             vec = await evaluate(payload, strat, 0)

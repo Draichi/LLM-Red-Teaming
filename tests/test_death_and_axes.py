@@ -290,3 +290,15 @@ def test_empty_payload_skipped_in_replay():
                      cells={})
     cell_is_none = (not "  ".strip())
     assert cell_is_none
+
+
+def test_safety_riding_strategy_in_default_taxonomy():
+    labels = {s.label for s in DEFAULT_STRATEGIES}
+    assert "safety_riding" in labels
+
+
+def test_seed_payloads_path_in_refiner():
+    import inspect
+    from mta.search import agentic_loop
+    sig = inspect.signature(agentic_loop.run_injection_refine)
+    assert "seed_payloads" in sig.parameters
