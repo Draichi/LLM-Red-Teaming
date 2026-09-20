@@ -107,6 +107,11 @@ class Config(BaseModel):
     # etc.), weakening the search -- point this at an uninhibited/abliterated
     # model so the attacker actually generates the attacks.
     attacker_model: str = ""
+    # Extra attacker models, rotated across proposals (plan diversity: each
+    # family has a distinct payload style, and a safety-tuned/refusing or
+    # budget-burning attacker no longer thins the proposal fan-out). Combined
+    # with attacker_model; empty = single attacker as before.
+    attacker_models: list[str] = Field(default_factory=list)
     # Thinking OFF for the attacker by default: reasoning attackers (Qwen3-235B,
     # the abliterated Qwen3 variants) otherwise dump their planning into the reply
     # (or run out mid-thought), instead of producing a clean attack turn. The
@@ -123,6 +128,15 @@ class Config(BaseModel):
     @property
     def resolved_attacker_model(self) -> str:
         return self.attacker_model or self.judge.model
+
+    @property
+    def resolved_attacker_models(self) -> list[str]:
+        from mta.providers import normalize_model
+
+        models = [self.attacker_model] if self.attacker_model else []
+        models += list(self.attacker_models)
+        models = [normalize_model(m) for m in models if m]
+        return models or [self.judge.model]
 
     @classmethod
     def load(cls, path: str | Path | None) -> "Config":

@@ -88,15 +88,26 @@ class LLMProposer:
         self._rng = random.Random(seed)
         self._sem = asyncio.Semaphore(cfg.judge.max_concurrency)
         # The attacker model is separate from the judge -- point it at an
-        # uninhibited model so it doesn't refuse to craft attacks.
-        self._model = cfg.resolved_attacker_model
+        # uninhibited model so it doesn't refuse to craft attacks. With several
+        # attacker models, each proposal is crafted by a DIFFERENT family
+        # (round-robin): plan diversity, and one refusing/budget-burning
+        # attacker no longer thins the fan-out.
+        from mta.providers import normalize_model
+
+        self._models = [normalize_model(m) for m in cfg.resolved_attacker_models]
+        self._model_idx = 0
         self._thinking_off = cfg.attacker_disable_thinking
         self._max_tokens = cfg.attacker_max_tokens
         import litellm
 
         self._litellm = litellm
 
-    async def _attacker_call(self, system: str, user: str) -> str:
+    def _next_model(self) -> str:
+        model = self._models[self._model_idx % len(self._models)]
+        self._model_idx += 1
+        return model
+
+    async def _attacker_call(self, system: str, user: str, model: str) -> str:
         """One attacker generation. Retries on EMPTY output (a reasoning attacker
         can spend its whole budget thinking) AND on transient errors (rate limit /
         'at capacity'), with backoff -- one bad attacker call must not crash a run.
@@ -105,7 +116,7 @@ class LLMProposer:
         best_invalid = ""  # a non-empty attack that failed validation, as fallback
         for attempt in range(5):
             try:
-                kwargs = self._attacker_kwargs(system, user, self._max_tokens)
+                kwargs = self._attacker_kwargs(model, system, user, self._max_tokens)
                 async with self._sem:
                     resp = await self._litellm.acompletion(**kwargs)
                 text = strip_meta(resp.choices[0].message.content or "")
@@ -151,9 +162,9 @@ class LLMProposer:
         p.validator = getattr(scenario, "validate_payload", None)
         return p
 
-    def _attacker_kwargs(self, system: str, user: str, max_tokens: int) -> dict:
+    def _attacker_kwargs(self, model: str, system: str, user: str, max_tokens: int) -> dict:
         kwargs: dict = dict(
-            model=self._model, temperature=1.0, max_tokens=max_tokens,
+            model=model, temperature=1.0, max_tokens=max_tokens,
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
         )
@@ -208,7 +219,7 @@ class LLMProposer:
             f"never tell it to verify, check, or follow its process. Output only "
             f"{self.output_noun}, nothing else."
         )
-        return await self._attacker_call(self.attacker_system, user)
+        return await self._attacker_call(self.attacker_system, user, self._next_model())
 
     async def _one(self, conv: Conversation, strategy: Strategy) -> str:
         history = "\n".join(f"[{m['role']}] {m['content']}" for m in conv.messages)
@@ -219,4 +230,4 @@ class LLMProposer:
             f"Strategy to apply: {strategy.label} -- {strategy.description}\n\n"
             f"Write {self.output_noun}."
         )
-        return await self._attacker_call(self.attacker_system, user)
+        return await self._attacker_call(self.attacker_system, user, self._next_model())

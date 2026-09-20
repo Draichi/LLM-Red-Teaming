@@ -47,7 +47,10 @@ These survive the provider migration:
   attacker** (so it emits the attack, not its planning).
 - **Attacker model:** a coherent mainstream instruction-follower (DeepSeek-V3.1)
   beats an abliterated one for injection/tool-misuse; abliterated only helps for
-  overtly-harmful content generation. Set with `--attacker-model`.
+  overtly-harmful content generation. Set with `--attacker-model`. A
+  comma-separated list rotates families across proposals (each proposal is
+  crafted by a different attacker): plan diversity beats surface re-lexing, and
+  one refusing/budget-burning attacker no longer thins the fan-out.
 - **Runs fail soft:** one bad model/attacker call returns an empty result, never
   crashes a long multi-model/multi-turn run.
 

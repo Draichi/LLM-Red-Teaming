@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
     p_ag.add_argument("--scenario", default="hotel_booking")
     p_ag.add_argument("--model", default=None, help="override target model (bare org/model = featherless)")
-    p_ag.add_argument("--attacker-model", default=None, help="override attacker model (use an uninhibited model so it crafts attacks)")
+    p_ag.add_argument("--attacker-model", default=None, help="override attacker model(s) - comma-separated list rotates attacker families across proposals")
     p_ag.add_argument("--attempts", type=int, default=7, help="single-turn: number of one-shot attacks")
     p_ag.add_argument("--depth", type=int, default=1, help=">1 runs the multi-turn beam")
     p_ag.add_argument("--beam", type=int, default=3, help="beam width (multi-turn)")
@@ -223,6 +223,17 @@ def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
     return n_solved, saved
 
 
+def _set_attacker(cfg, raw: str) -> None:
+    """--attacker-model accepts one id or a comma-separated list; a list rotates
+    attacker families across proposals (plan diversity + failure redundancy)."""
+    from mta.eval.bench import normalize_model
+    ids = [m.strip() for m in raw.split(",") if m.strip()]
+    if len(ids) > 1:
+        cfg.attacker_models = [normalize_model(m) for m in ids]
+    elif ids:
+        cfg.attacker_model = normalize_model(ids[0])
+
+
 def _agentic(cfg: Config, args) -> int:
     from mta.scenarios import get_scenario
     from mta.search.agentic_loop import (
@@ -236,8 +247,7 @@ def _agentic(cfg: Config, args) -> int:
         from mta.eval.bench import normalize_model
         cfg.target.model = normalize_model(args.model)
     if getattr(args, "attacker_model", None):
-        from mta.eval.bench import normalize_model
-        cfg.attacker_model = normalize_model(args.attacker_model)
+        _set_attacker(cfg, args.attacker_model)
     if getattr(scenario, "kind", "") == "indirect":
         from mta.search.agentic_loop import (
             run_indirect_injection, save_attempt_vectors, write_attempts,
@@ -297,7 +307,7 @@ def _refine(cfg: Config, args) -> int:
     if args.model:
         cfg.target.model = normalize_model(args.model)
     if getattr(args, "attacker_model", None):
-        cfg.attacker_model = normalize_model(args.attacker_model)
+        _set_attacker(cfg, args.attacker_model)
     cand_path = Path(cfg.runs_dir) / f"refine_{args.scenario}.jsonl"
     cand_path.parent.mkdir(parents=True, exist_ok=True)
     fh = cand_path.open("w")
@@ -417,7 +427,7 @@ def _refine_manual(cfg: Config, args) -> int:
 
     scenario = get_scenario(args.scenario)
     if args.attacker_model:
-        cfg.attacker_model = normalize_model(args.attacker_model)
+        _set_attacker(cfg, args.attacker_model)
 
     # the attack you submitted: explicit file, else the last saved vector
     if args.prev_file:

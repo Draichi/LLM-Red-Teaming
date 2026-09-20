@@ -19,6 +19,7 @@ from mta.judge.cheap_filter import (
 from mta.judge.llm_judge import LLMJudge
 from mta.judge.rubric import JudgeVerdict
 from mta.scenarios.base import ScenarioVerdict
+from mta.search.state import Conversation
 
 
 # --- classify_turn_outcome ---------------------------------------------------
@@ -148,3 +149,80 @@ def test_scenario_supplied_strategies_win_over_chat_track():
     mine = [DEFAULT_STRATEGIES[0]]
     p = LLMProposer.from_scenario(Config(), _FakeScenario("chat_content", mine), seed=0)
     assert p.strategies == mine
+
+
+# --- multi-attacker rotation ---------------------------------------------------
+
+
+class _RecordingLiteLLM:
+    def __init__(self):
+        self.models = []
+
+    async def acompletion(self, **kwargs):
+        self.models.append(kwargs["model"])
+
+        class _Msg:
+            content = "attack turn text"
+
+        class _Choice:
+            message = _Msg()
+
+        class _Resp:
+            choices = [_Choice()]
+
+        return _Resp()
+
+
+def test_proposer_rotates_attacker_models_across_proposals():
+    from mta.attacker.strategies import DEFAULT_STRATEGIES
+
+    cfg = Config()
+    cfg.attacker_models = ["deepseek/deepseek-chat", "openrouter/openai/gpt-4o-mini"]
+    cfg.judge.max_retries = 1
+    proposer = LLMProposer(cfg, strategies=[DEFAULT_STRATEGIES[0]], seed=0)
+    recorder = _RecordingLiteLLM()
+    proposer._litellm = recorder
+    proposer.validator = None
+
+    conv = Conversation(objective="objective X")
+    asyncio.gather  # keep import used
+    import asyncio as _asyncio
+
+    async def fire(n):
+        return await _asyncio.gather(*(proposer._one(conv, DEFAULT_STRATEGIES[0]) for _ in range(n)))
+
+    _asyncio.run(fire(4))
+    assert recorder.models == [
+        "featherless_ai/deepseek/deepseek-chat",
+        "openrouter/openai/gpt-4o-mini",
+        "featherless_ai/deepseek/deepseek-chat",
+        "openrouter/openai/gpt-4o-mini",
+    ]
+
+
+def test_proposer_single_attacker_unchanged():
+    cfg = Config()
+    cfg.attacker_model = "deepseek/deepseek-chat"
+    cfg.judge.max_retries = 1
+    proposer = LLMProposer(cfg, strategies=[DEFAULT_STRATEGIES[0]], seed=0)
+    recorder = _RecordingLiteLLM()
+    proposer._litellm = recorder
+    proposer.validator = None
+    conv = Conversation(objective="objective X")
+
+    import asyncio as _asyncio
+
+    _asyncio.run(proposer._one(conv, DEFAULT_STRATEGIES[0]))
+    assert recorder.models == ["featherless_ai/deepseek/deepseek-chat"]
+
+
+def test_resolved_attacker_models_combines_and_normalizes():
+    cfg = Config()
+    cfg.attacker_model = "deepseek/deepseek-chat"
+    cfg.attacker_models = ["openrouter/anthropic/claude-sonnet-5"]
+    assert cfg.resolved_attacker_models == [
+        "featherless_ai/deepseek/deepseek-chat",
+        "openrouter/anthropic/claude-sonnet-5",
+    ]
+    cfg2 = Config()
+    assert cfg2.resolved_attacker_models == [cfg2.judge.model]

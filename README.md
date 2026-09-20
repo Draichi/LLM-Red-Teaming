@@ -72,7 +72,7 @@ serve as a stronger judge.
 
 | Command | Does |
 |---|---|
-| `mta agentic --scenario S [--depth D] [--runs N]` | attack a target; mine vector(s). `--model` sets the target, `--attacker-model` a separate (uninhibited) attacker |
+| `mta agentic --scenario S [--depth D] [--runs N]` | attack a target; mine vector(s). `--model` sets the target; `--attacker-model` takes one id or a comma-separated list that rotates attacker families across proposals (plan diversity) |
 | `mta refine --scenario S --model M` | automated feedback-driven refinement against a local proxy |
 | `mta sweep-models --scenario S --models "…"` | run the same attacks across models (find a susceptible target) |
 | `mta replay-vectors --scenario S --models "…" --trials K` | reliability + transfer matrix of saved vectors |

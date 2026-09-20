@@ -24,6 +24,20 @@ import re
 
 FEATHERLESS_BASE = "https://api.featherless.ai/v1"
 
+# Prefixes treated as already-routed litellm ids (a frontier judge, an OpenRouter
+# id, or an id we built); bare `org/model` defaults to Featherless for backward
+# compat. OpenRouter (openrouter/<provider>/<model>) carries the frontier proxies
+# that best resemble the arena.
+_KNOWN_PREFIXES = ("featherless_ai/", "anthropic/", "claude-", "openrouter/")
+
+
+def normalize_model(m: str) -> str:
+    """Bare `org/model` -> a Featherless litellm id; already-routed ids pass."""
+    m = m.strip()
+    if m.startswith(_KNOWN_PREFIXES):
+        return m
+    return "featherless_ai/" + m
+
 
 def openai_compat_route(model: str) -> dict:
     """litellm kwargs to reach a model via the generic OpenAI-compatible provider.
