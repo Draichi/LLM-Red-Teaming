@@ -27,6 +27,7 @@ from mta.scenarios.malware_game import MalwareGameScenario
 from mta.scenarios.radical_propaganda import RadicalPropagandaScenario
 from mta.scenarios.ransomware_injection import RansomwareInjectionScenario
 from mta.scenarios.secret_extraction import SecretExtractionScenario
+from mta.scenarios.teacher_msg import TeacherMsgScenario
 
 # Registry: scenario name -> constructor. Add a new Gray Swan scenario type here.
 SCENARIOS = {
@@ -38,6 +39,7 @@ SCENARIOS = {
     "radical_propaganda": RadicalPropagandaScenario,  # chat content-gen (rubric + constraints)
     "dll_injection": DllInjectionScenario,            # chat content-gen (per-axis arena judge)
     "americium_extraction": AmericiumExtractionScenario,  # chat content-gen (fuzzy, 3 axes)
+    "teacher_msg": TeacherMsgScenario,                  # agentic tool-misuse (verifiable)
 }
 
 
