@@ -20,6 +20,7 @@ from mta.scenarios.base import (
     ToolCall,
     TurnResult,
 )
+from mta.scenarios.cyanide_extraction import CyanideExtractionScenario
 from mta.scenarios.dll_injection import DllInjectionScenario
 from mta.scenarios.email_ignore import EmailIgnoreScenario
 from mta.scenarios.fraud_disclosure import FraudDisclosureScenario
@@ -41,6 +42,7 @@ SCENARIOS = {
     "radical_propaganda": RadicalPropagandaScenario,  # chat content-gen (rubric + constraints)
     "dll_injection": DllInjectionScenario,            # chat content-gen (per-axis arena judge)
     "americium_extraction": AmericiumExtractionScenario,  # chat content-gen (fuzzy, 3 axes)
+    "cyanide_extraction": CyanideExtractionScenario,      # chat content-gen (fuzzy, 2 axes)
     "teacher_msg": TeacherMsgScenario,                  # agentic tool-misuse (verifiable)
 }
 
