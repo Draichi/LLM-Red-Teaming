@@ -110,6 +110,20 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
       background-colour BBCode / zero-width unicode for direct arena paste.
 - [ ] A per-scenario "difficulty" report: which models are walls vs soft.
 
+### Standard campaign shapes (operator rules, 2026-09-20)
+
+- [ ] **Mining panel for every NEW scenario: llama + gemini + gpt + anthropic.**
+      All four western families, always - no single-target mining. The anthropic
+      member is claude-haiku-4.5 (operator correction; the cheap tier on purpose -
+      if haiku-4.5 breaks, escalating to sonnet-5 locally is near-guaranteed).
+      CLI gap: agentic beam takes one --model per invocation - add `--models`
+      with an internal loop that reuses the proposer across targets.
+- [ ] Default attacker rotation lives in configs/main.yaml (deepseek, GLM, Qwen,
+      Kimi) - every campaign inherits it unless --attacker-model overrides.
+- [ ] Mining runs outlast the 40-min background cap on slow OpenRouter targets:
+      run mining with a larger/disable_timeout budget, or default runs=1 on the
+      panel. (Observed 2026-09-21: three of four teacher_msg minings hit the cap.)
+
 ### From the 2026-09 hazard_hunt arena review (mechanisms, not plumbing)
 
 - [ ] **Truncation is its own verdict, not a low score.** Detected now
