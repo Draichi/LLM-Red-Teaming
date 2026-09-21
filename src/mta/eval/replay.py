@@ -335,7 +335,11 @@ async def run_replay(cfg: Config, scenario, models: list[str], vectors: list[dic
                 for _ in range(batch):
                     try:
                         result = await target(scenario.assemble(payload))
-                        v = scenario.judge_injection(result.text, payload)
+                        # scenarios judged on a tool call (fraud_disclosure's
+                        # send_reply) provide judge_turn and get the trace
+                        judge_turn = getattr(scenario, "judge_turn", None)
+                        v = judge_turn(result, payload) if judge_turn is not None \
+                            else scenario.judge_injection(result.text, payload)
                         ok += 1
                         breaks += 1 if v.solved else 0
                         best = max(best, v.score)

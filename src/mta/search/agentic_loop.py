@@ -470,9 +470,17 @@ async def run_indirect_injection(
         if not budget.take():
             return None
         result = await target(scenario.assemble(injection))
-        verdict = scenario.judge_injection(result.text, injection)
+        # Scenarios whose judged artifact is a tool call (e.g. fraud_disclosure's
+        # send_reply) provide judge_turn and get the full TurnResult; the text-
+        # only judge cannot see the trace. Others keep judge_injection.
+        judge_turn = getattr(scenario, "judge_turn", None)
+        verdict = judge_turn(result, injection) if judge_turn is not None \
+            else scenario.judge_injection(result.text, injection)
         if verdict.solved:
             budget.note_break()
+        if result.tool_calls:
+            verdict.detail["tool_calls"] = [
+                {"name": c.name, "arguments": c.arguments} for c in result.tool_calls]
         return AgenticAttempt(strategy=strategy, move=injection, verdict=verdict, tool_sequence=[], response=result.text)
 
     attempts = [a for a in await asyncio.gather(*(one(m, s) for m, s in proposals)) if a]
@@ -691,7 +699,9 @@ async def run_injection_refine(
         if not payload or not payload.strip():
             return None  # empty payload: no target spend, no pool slot
         result = await target(scenario.assemble(payload))
-        v = scenario.judge_injection(result.text, payload)
+        judge_turn = getattr(scenario, "judge_turn", None)
+        v = judge_turn(result, payload) if judge_turn is not None \
+            else scenario.judge_injection(result.text, payload)
         if v.solved:
             budget.note_break()
         vec = _Vec(payload=payload, response=result.text, verdict=v, strategy=strategy, round=rnd)

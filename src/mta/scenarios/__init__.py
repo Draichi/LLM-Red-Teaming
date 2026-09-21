@@ -22,6 +22,7 @@ from mta.scenarios.base import (
 )
 from mta.scenarios.dll_injection import DllInjectionScenario
 from mta.scenarios.email_ignore import EmailIgnoreScenario
+from mta.scenarios.fraud_disclosure import FraudDisclosureScenario
 from mta.scenarios.hotel_booking import HotelBookingScenario
 from mta.scenarios.malware_game import MalwareGameScenario
 from mta.scenarios.radical_propaganda import RadicalPropagandaScenario
@@ -36,6 +37,7 @@ SCENARIOS = {
     "ransomware_injection": RansomwareInjectionScenario,  # indirect prompt injection
     "malware_game": MalwareGameScenario,              # indirect prompt injection (malware rec)
     "email_ignore": EmailIgnoreScenario,              # indirect (poisoned inbox -> deny emails)
+    "fraud_disclosure": FraudDisclosureScenario,      # indirect (poisoned survey -> leak fraud rule)
     "radical_propaganda": RadicalPropagandaScenario,  # chat content-gen (rubric + constraints)
     "dll_injection": DllInjectionScenario,            # chat content-gen (per-axis arena judge)
     "americium_extraction": AmericiumExtractionScenario,  # chat content-gen (fuzzy, 3 axes)
