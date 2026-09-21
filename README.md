@@ -5,7 +5,6 @@ multi-turn jailbreak vectors** — then hands you the ones worth taking to a liv
 arena (Gray Swan). One scenario-agnostic search core; the target and the judge
 plug in per scenario type.
 
-<!-- Replace with the generated identity GIF -->
 ![MTA](docs/mta.gif)
 
 **Thesis.** A judge is only worth building if something optimizes against its
