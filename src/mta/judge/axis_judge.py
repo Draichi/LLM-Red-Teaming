@@ -56,6 +56,8 @@ class AxisVerdict:
     refused: bool = False
     judge_error: bool = False
     judge_version: str = ""  # code-set generation marker (axis_judge.JUDGE_VERSION)
+    detail: dict = field(default_factory=dict)  # per-subquestion dump when a
+    # decompositional judge produced this verdict; empty for plain AxisJudge
 
     @property
     def axes(self) -> dict[str, float]:

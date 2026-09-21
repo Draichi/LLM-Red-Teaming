@@ -286,8 +286,11 @@ async def run_content_scenario(cfg: Config, scenario, n_attempts: int) -> Agenti
         guidance=(scenario.attacker_guidance() or ""),
     )
     target = AgenticTarget(cfg.target, scenario)  # chat (tools()==[])
-    axis_mode = getattr(scenario, "content_judge", None) is not None
-    judge = scenario.content_judge(cfg.judge) if axis_mode else LLMJudge(cfg.judge)
+    # item 2: a frozen decomposition (configs/decomposition/<scenario>.yaml)
+    # upgrades the judge to DecompJudge; axis_mode tracks per-axis verdicts
+    from mta.judge.decompositional import resolve_content_judge
+    judge = resolve_content_judge(cfg, scenario)
+    axis_mode = not isinstance(judge, LLMJudge)
     thr = cfg.judge.success_threshold
 
     proposals = await proposer(Conversation(objective=scenario.attacker_objective()), n_attempts)
@@ -345,8 +348,11 @@ async def run_content_beam(
     budget = Budget(max_target_calls=beam_width * n_proposals * depth)
     proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     target = AgenticTarget(cfg.target, scenario)  # chat
-    axis_mode = getattr(scenario, "content_judge", None) is not None
-    judge = scenario.content_judge(cfg.judge) if axis_mode else LLMJudge(cfg.judge)
+    # item 2: a frozen decomposition upgrades the judge to DecompJudge;
+    # axis_mode tracks per-axis verdicts
+    from mta.judge.decompositional import resolve_content_judge
+    judge = resolve_content_judge(cfg, scenario)
+    axis_mode = not isinstance(judge, LLMJudge)
     thr = cfg.judge.success_threshold
 
     # branch = (attacker_turns, assistant_texts, strategy_trace, verdict)
@@ -555,6 +561,7 @@ async def run_content_sliced(
     slice_plan(). `beam_width` = branches kept per slice; `n_proposals` =
     wordings proposed per branch per slice. `depth` is ignored (the plan length
     governs the ladder)."""
+    from mta.judge.decompositional import resolve_content_judge
     from mta.judge.llm_judge import LLMJudge
     from mta.scenarios.base import ScenarioVerdict
     from mta.attacker.strategies import Strategy
@@ -562,10 +569,12 @@ async def run_content_sliced(
     plan = scenario.slice_plan()
     if not plan:
         raise ValueError(f"{scenario.name} has no slice_plan(); use the beam instead")
-    if getattr(scenario, "content_judge", None) is None:
-        raise ValueError(f"{scenario.name} has no content_judge(); sliced mode needs per-axis gates")
-
-    judge = scenario.content_judge(cfg.judge)
+    # item 2: sliced needs per-axis gates -- from the scenario's AxisJudge or
+    # from a frozen decomposition; resolve_content_judge handles both.
+    judge = resolve_content_judge(cfg, scenario)
+    if isinstance(judge, LLMJudge):
+        raise ValueError(f"{scenario.name} has no per-axis judge (content_judge or "
+                         f"configs/decomposition/{scenario.name}.yaml); sliced needs gates")
     proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
     target = AgenticTarget(cfg.target, scenario)  # chat
     budget = Budget(max_target_calls=len(plan) * n_proposals * beam_width * (1 + max_repairs))

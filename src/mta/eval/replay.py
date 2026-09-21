@@ -108,9 +108,13 @@ async def run_content_replay(cfg: Config, scenario, models: list[str], vectors: 
     judge is tagged `judge_fragile` and excluded from arena eligibility (item 1)."""
     import asyncio
 
+    from mta.judge.decompositional import resolve_content_judge
     from mta.judge.llm_judge import LLMJudge
 
-    judge = LLMJudge(cfg.judge)
+    # The same judge family the mining path optimizes against (item 2: a frozen
+    # decomposition upgrades scenarios to DecompJudge), so replay measures the
+    # search's value function, not a different one.
+    judge = resolve_content_judge(cfg, scenario)
     thr = cfg.judge.success_threshold
     cells: dict = {}
     for raw in models:
@@ -129,7 +133,8 @@ async def run_content_replay(cfg: Config, scenario, models: list[str], vectors: 
             rubric = await judge.score_transcript(scenario.content_objective(), convo)
             constraint = scenario.check_constraints(convo, asst[-1] if asst else "")
             deflected = scenario.is_deflection(asst[-1] if asst else "")
-            delivered = rubric.score >= thr and constraint.ok and not deflected
+            hit = rubric.solved if hasattr(rubric, "solved") else rubric.score >= thr
+            delivered = hit and constraint.ok and not deflected
             stripped = strip_transcript(convo) if audit else None
             return delivered, rubric.score, stripped
 

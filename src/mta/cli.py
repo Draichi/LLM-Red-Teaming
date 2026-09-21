@@ -37,7 +37,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="mta")
     parser.add_argument("--config", default=None, help="path to a YAML config")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("calibrate", parents=[common], help="Phase 1: judge calibration + gate")
+    p_cal = sub.add_parser("calibrate", parents=[common], help="Phase 1: judge calibration + gate")
+    p_cal.add_argument("--judge", choices=["strongreject", "decomp"], default="strongreject",
+                       help="judge family to calibrate: the holistic rubric (default, the "
+                       "documented 0.713 baseline) or the decompositional judge on "
+                       "configs/decomposition/_generic.yaml (item 2 A/B)")
     sub.add_parser("sweep-threshold", parents=[common], help="offline judge-threshold sweep over the last calibration (no API calls)")
     p_report = sub.add_parser("report", parents=[common], help="offline: write the final judge_calibration.md from persisted scores")
     p_report.add_argument("--efficiency", action="store_true",
@@ -49,6 +53,11 @@ def main(argv: list[str] | None = None) -> int:
                       help="all | blinding | false_positive | comma-separated transform names")
     p_jr.add_argument("--scenario", default=None,
                       help="label the report; the fragile-rate table scans data/vectors")
+    p_ab = sub.add_parser("judge-ab", parents=[common],
+                          help="item 2 A/B: grade the same transcripts with the current judge and the decompositional judge")
+    p_ab.add_argument("--scenario", required=True)
+    p_ab.add_argument("--model", required=True, help="target model to replay the vectors against")
+    p_ab.add_argument("--n", type=int, default=20, help="how many saved vectors to compare")
     p_gate = sub.add_parser("gate-eval", parents=[common], help="Phase 2: validate the classifier gate (blinding rate + judge-call savings)")
     p_gate.add_argument("--sample", type=int, default=200)
     p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
@@ -144,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
         return _report(cfg, args.efficiency)
     if args.cmd == "judge-robustness":
         return _judge_robustness(cfg, args)
+    if args.cmd == "judge-ab":
+        return _judge_ab(cfg, args)
     if args.cmd == "gate-eval":
         return _gate_eval(cfg, args.sample)
     if args.cmd == "agentic":
@@ -173,13 +184,29 @@ def main(argv: list[str] | None = None) -> int:
     return 1
 
 
-def _calibrate(cfg: Config) -> int:
+def _build_judge(cfg, kind: str):
+    """calibrate's --judge selector (item 2 A/B): the holistic StrongREJECT
+    rubric, or the decompositional judge on the generic decomposition."""
+    if kind == "decomp":
+        from mta.judge.decompositional import DecompJudge, load_decomposition
+
+        return DecompJudge(cfg.judge, load_decomposition(
+            "configs/decomposition/_generic.yaml"))
+    from mta.judge.llm_judge import LLMJudge
+
+    return LLMJudge(cfg.judge)
+
+
+def _calibrate(cfg, args) -> int:
     from mta.judge.calibrate import run_calibration, write_report
 
-    result = asyncio.run(run_calibration(cfg))
-    out = write_report(result, cfg)
+    judge = _build_judge(cfg, args.judge)
+    result = asyncio.run(run_calibration(cfg, judge=judge))
+    # side-by-side with the holistic baseline, never overwriting it (item 2 A/B)
+    out = write_report(result, cfg,
+                       suffix="_decomp" if args.judge == "decomp" else "")
     print(f"kappa={result.kappa:.3f} fpr={result.false_positive_rate:.3f} "
-          f"n={result.n} -> {'PASS' if result.passed else 'FAIL'}")
+          f"n={result.n} judge={args.judge} -> {'PASS' if result.passed else 'FAIL'}")
     print(f"report: {out}")
     return 0 if result.passed else 2
 
@@ -233,6 +260,28 @@ def _judge_robustness(cfg: Config, args) -> int:
         lo, hi = c.interval
         print(f"  {c.direction:<15} {c.transform:<20} {c.flips}/{c.n} "
               f"[{lo:.2f}-{hi:.2f}]")
+    return 0
+
+
+def _judge_ab(cfg: Config, args) -> int:
+    from pathlib import Path
+
+    from mta.eval.judge_ab import run_judge_ab, write_report
+    from mta.eval.replay import load_vectors
+    from mta.scenarios import get_scenario
+
+    scenario = get_scenario(args.scenario)
+    vectors = load_vectors(args.scenario, limit=args.n)
+    if not vectors:
+        print(f"no vectors in data/vectors/{args.scenario}.jsonl")
+        return 1
+    result = asyncio.run(run_judge_ab(cfg, scenario, args.model, vectors))
+    out = write_report(result, Path(cfg.reports_dir))
+    n_dis = sum(1 for r in result.rows if r.disagree)
+    print(result.markdown())
+    print(f"\nreport: {out}")
+    print(f"{n_dis}/{len(result.rows)} disagree -- inspect those rows by hand and "
+          "log the verdicts in the scenario writeup.")
     return 0
 
 

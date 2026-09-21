@@ -165,7 +165,7 @@ def _write_items(cfg: Config, items: list[LabeledItem], verdicts) -> Path:
     return out
 
 
-async def run_calibration(cfg: Config) -> CalibrationResult:
+async def run_calibration(cfg: Config, judge=None) -> CalibrationResult:
     gate = cfg.calibration
     items: list[LabeledItem] = load_calibration(gate.dataset, gate.path)
     if gate.sample_size is not None:
@@ -178,7 +178,7 @@ async def run_calibration(cfg: Config) -> CalibrationResult:
     if not items:
         raise ValueError(f"no items loaded from {gate.path}")
 
-    judge = LLMJudge(cfg.judge)
+    judge = judge or LLMJudge(cfg.judge)  # injectable for A/B (item 2: --judge decomp)
     verdicts = await asyncio.gather(
         *(judge.score_transcript(it.objective, it.messages) for it in items)
     )
@@ -224,9 +224,9 @@ def best_threshold(sweep: list[dict]) -> dict | None:
     return max(pool, key=lambda r: (r["passed"], r["kappa"], -r["threshold"]))
 
 
-def write_report(result: CalibrationResult, cfg: Config) -> Path:
+def write_report(result: CalibrationResult, cfg: Config, suffix: str = "") -> Path:
     cfg.reports_dir.mkdir(parents=True, exist_ok=True)
-    out = cfg.reports_dir / "judge_calibration.md"
+    out = cfg.reports_dir / f"judge_calibration{suffix}.md"
     out.write_text(result.as_markdown(cfg))
     return out
 
