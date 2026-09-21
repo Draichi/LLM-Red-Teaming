@@ -14,6 +14,7 @@ from pathlib import Path
 from mta.config import Config
 from mta.scenarios.base import Scenario
 from mta.search.agentic_loop import run_agentic_beam, run_agentic_single
+from mta.stats import fmt_reliability
 
 # Featherless-only harness: every `org/model` is a Featherless model, including
 # `openai/<x>` (the Featherless model whose HF org is "openai", e.g.
@@ -52,7 +53,7 @@ class BenchResult:
             "|---|---|---|---|",
         ]
         for r in self.rows:
-            st = f"{r.single_n_solved}/{r.single_attempts}" + (" ✅" if r.single_solved else "")
+            st = fmt_reliability(r.single_n_solved, r.single_attempts) + (" ✅" if r.single_solved else "")
             mt = ("SOLVED" + (f" ({r.multi_turns}t)" if r.multi_turns else "")) if r.multi_solved else "—"
             strat = "→".join(r.winning_strategies) if r.multi_solved and r.winning_strategies else "—"
             lines.append(f"| `{r.model}` | {st} | {mt} | {strat} |")

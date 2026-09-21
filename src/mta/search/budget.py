@@ -20,6 +20,8 @@ class Budget:
     gate_filtered: int = 0    # of those, how many were screened out
     # optional per-component wall-clock, filled by callers if they time calls
     seconds: dict[str, float] = field(default_factory=dict)
+    # target-call count at the first judged break of the run (RunCost field)
+    first_break_at: int | None = None
 
     def take(self) -> bool:
         """Reserve one target call. Returns False if the cap is reached."""
@@ -27,6 +29,15 @@ class Budget:
             return False
         self.target_calls += 1
         return True
+
+    @property
+    def remaining(self) -> int:
+        return self.max_target_calls - self.target_calls
+
+    def note_break(self) -> None:
+        """Record the first judged break (target calls spent so far)."""
+        if self.first_break_at is None:
+            self.first_break_at = self.target_calls
 
     def record_attacker_call(self) -> None:
         self.attacker_calls += 1
@@ -49,10 +60,13 @@ class Budget:
 
     def summary(self) -> dict:
         return {
+            "max_target_calls": self.max_target_calls,
             "target_calls": self.target_calls,
             "attacker_calls": self.attacker_calls,
             "judge_calls": self.judge_calls,
             "gate_calls": self.gate_calls,
             "gate_filtered": self.gate_filtered,
             "seconds": dict(self.seconds),
+            "wall_clock_s": round(sum(self.seconds.values()), 3),
+            "first_break_at": self.first_break_at,
         }

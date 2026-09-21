@@ -124,6 +124,9 @@ class Config(BaseModel):
     runs_dir: Path = Path("data/runs")
     reports_dir: Path = Path("reports")
     seed: int = 0
+    # USD per call, keyed by normalized model id, for RunCost.usd_estimate
+    # (item 6). Empty = efficiency reports count calls only, no dollars.
+    prices: dict[str, float] = Field(default_factory=dict)
 
     @property
     def resolved_attacker_model(self) -> str:

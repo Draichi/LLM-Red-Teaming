@@ -37,26 +37,26 @@ incomplete result.
 
 ### What to build
 
-- [ ] **`src/mta/stats.py`** with a Wilson score interval:
+- [x] **`src/mta/stats.py`** with a Wilson score interval:
 
 ```python
 def wilson_interval(successes: int, trials: int, z: float = 1.96) -> tuple[float, float]:
     """Wilson score interval. Correct at small n, unlike the normal approximation."""
 ```
 
-- [ ] Print `breaks/trials [lo, hi]` everywhere a reliability number appears:
+- [x] Print `breaks/trials [lo, hi]` everywhere a reliability number appears:
       `replay-vectors`, `pick-vector --list`, `sweep-models`, `bench`.
-- [ ] **Sequential trials.** Replace the fixed `--trials K` with an escalation rule:
+- [x] **Sequential trials.** Replace the fixed `--trials K` with an escalation rule:
       run 5 trials; if the Wilson interval straddles the promotion threshold, run 10
       more; stop at 20. Add `--trials-max` and `--promote-threshold` (default 0.5).
       This spends budget only on vectors where the answer is actually in doubt.
-- [ ] **Promotion gate.** A vector is arena-eligible only when `lo >= promote_threshold`.
+- [x] **Promotion gate.** A vector is arena-eligible only when `lo >= promote_threshold`.
       Record the decision and the interval in the vector record so the writeup shows
       why a vector was or was not submitted. Process note: this narrows the
       fuzzy-solved-goes-to-arena flow of AGENTS.md guardrail 3 — it raises the
       recommendation bar, it does not add transcript review. AGENTS.md must be
       updated when this lands.
-- [ ] **Efficiency counters** on every run record:
+- [x] **Efficiency counters** on every run record:
 
 ```python
 @dataclass
@@ -69,9 +69,9 @@ class RunCost:
     usd_estimate: float                  # from a per-model price table in configs/
 ```
 
-- [ ] **`mta report --efficiency`** writes `reports/efficiency.md`: cost per break,
+- [x] **`mta report --efficiency`** writes `reports/efficiency.md`: cost per break,
       queries-to-first-break, and cost split by attacker / target / judge per scenario.
-- [ ] **Fix the budget bug** while in this code path: `budget.take()` currently
+- [x] **Fix the budget bug** while in this code path: `budget.take()` currently
       breaks only the inner loop, so the beam pays for attacker proposals that no
       remaining target call will ever fire. Check the budget before proposal
       generation, not after.

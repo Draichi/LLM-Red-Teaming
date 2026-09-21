@@ -48,9 +48,16 @@ async def beam_search(
     best_score = 0.0
 
     for turn in range(cfg.depth):
-        # 1. Propose next moves for every live beam.
+        # 1. Propose next moves for every live beam -- but only as many as the
+        #    remaining target budget can ever fire. Generating proposals the
+        #    budget cannot spend wastes an attacker call per beam (item 6).
+        remaining = budget.remaining
+        if remaining <= 0:
+            return _result(objective, False, "budget_exhausted", best_score, budget)
+        beams = beams[:remaining]
+        per_beam = max(1, min(cfg.n_proposals, remaining // len(beams)))
         proposal_lists = await asyncio.gather(
-            *(propose(conv, cfg.n_proposals) for conv in beams)
+            *(propose(conv, per_beam) for conv in beams)
         )
         for _ in beams:
             budget.record_attacker_call()
@@ -158,6 +165,7 @@ async def beam_search(
 
         top_verdict, top_conv = ranked[0]
         if top_verdict.score >= judge.cfg.success_threshold:
+            budget.note_break()
             return RunResult(
                 objective=objective,
                 solved=True,

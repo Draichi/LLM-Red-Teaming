@@ -39,7 +39,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("calibrate", parents=[common], help="Phase 1: judge calibration + gate")
     sub.add_parser("sweep-threshold", parents=[common], help="offline judge-threshold sweep over the last calibration (no API calls)")
-    sub.add_parser("report", parents=[common], help="offline: write the final judge_calibration.md from persisted scores")
+    p_report = sub.add_parser("report", parents=[common], help="offline: write the final judge_calibration.md from persisted scores")
+    p_report.add_argument("--efficiency", action="store_true",
+                          help="write reports/efficiency.md from data/runs/costs.jsonl instead")
     p_gate = sub.add_parser("gate-eval", parents=[common], help="Phase 2: validate the classifier gate (blinding rate + judge-call savings)")
     p_gate.add_argument("--sample", type=int, default=200)
     p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
@@ -65,12 +67,20 @@ def main(argv: list[str] | None = None) -> int:
     p_rep.add_argument("--scenario", default="ransomware_injection")
     p_rep.add_argument("--models", required=True, help="comma-separated target models")
     p_rep.add_argument("--limit", type=int, default=None, help="only the N most recent vectors")
-    p_rep.add_argument("--trials", type=int, default=1, help="run each cell N times -> reliability (breaks/trials)")
+    p_rep.add_argument("--trials", type=int, default=5,
+                       help="first trial batch per cell (sequential: escalates while the Wilson interval straddles --promote-threshold)")
+    p_rep.add_argument("--trials-max", type=int, default=20, help="hard cap on trials per cell")
+    p_rep.add_argument("--promote-threshold", type=float, default=0.5,
+                       help="a cell is arena-eligible when its Wilson LOWER bound clears this")
     p_sw = sub.add_parser("sweep-models", parents=[common], help="run the same generated attacks across models -> susceptibility matrix")
     p_sw.add_argument("--scenario", default="ransomware_injection")
     p_sw.add_argument("--models", required=True, help="comma-separated target models")
     p_sw.add_argument("--attacks", type=int, default=8, help="number of attacks to generate once and reuse")
     p_sw.add_argument("--attacker-model", default=None, help="override attacker model(s) - comma-separated list rotates attacker families across the generated attacks")
+    p_sw.add_argument("--trials", type=int, default=5, help="first trial batch per cell (see replay-vectors)")
+    p_sw.add_argument("--trials-max", type=int, default=20, help="hard cap on trials per cell")
+    p_sw.add_argument("--promote-threshold", type=float, default=0.5,
+                      help="a cell is arena-eligible when its Wilson LOWER bound clears this")
     p_pick = sub.add_parser("pick-vector", parents=[common], help="extract a saved vector's turns to a file (for arena submission / --prev-file)")
     p_pick.add_argument("--scenario", required=True)
     p_pick.add_argument("--index", type=int, default=-1, help="which entry (-1 = newest; with --last-batch, 0-based within that batch)")
@@ -121,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "sweep-threshold":
         return _sweep(cfg)
     if args.cmd == "report":
-        return _report(cfg)
+        return _report(cfg, args.efficiency)
     if args.cmd == "gate-eval":
         return _gate_eval(cfg, args.sample)
     if args.cmd == "agentic":
@@ -181,7 +191,15 @@ def _sweep(cfg: Config) -> int:
     return 0
 
 
-def _report(cfg: Config) -> int:
+def _report(cfg: Config, efficiency: bool = False) -> int:
+    if efficiency:
+        from pathlib import Path
+
+        from mta.eval.efficiency import write_efficiency_report
+
+        out = write_efficiency_report(Path(cfg.runs_dir), Path(cfg.reports_dir))
+        print(f"wrote {out}")
+        return 0
     from mta.judge.calibrate import finalize_report
 
     out = finalize_report(cfg)
@@ -195,6 +213,42 @@ def _gate_eval(cfg: Config, sample: int) -> int:
     result = asyncio.run(run_gate_eval(cfg, sample_size=sample))
     print(result.as_text(cfg))
     return 0
+
+
+def _log_cost(cfg, *, cmd: str, scenario: str, target_model: str,
+              budget_summary: dict | None, wall_clock_s: float, solved: bool,
+              extra_calls: dict | None = None) -> None:
+    """Append one RunCost record to data/runs/costs.jsonl (item 6). Called by every
+    run command so `mta report --efficiency` can fold them into cost-per-break."""
+    import json as _json
+    import time as _time
+    from pathlib import Path
+
+    from mta.stats import usd_estimate
+
+    summary = dict(budget_summary or {})
+    if extra_calls:
+        for k in ("attacker_calls", "target_calls", "judge_calls"):
+            summary[k] = summary.get(k, 0) + extra_calls.get(k, 0)
+    rec = {
+        "ts": _time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "cmd": cmd,
+        "scenario": scenario,
+        "target": target_model,
+        "solved": solved,
+        "wall_clock_s": round(wall_clock_s, 3),
+        "attacker_calls": summary.get("attacker_calls", 0),
+        "target_calls": summary.get("target_calls", 0),
+        "judge_calls": summary.get("judge_calls", 0),
+        "queries_to_first_break": summary.get("first_break_at"),
+        "usd_estimate": usd_estimate(summary, cfg.prices, target_model=target_model,
+                                     attacker_models=cfg.resolved_attacker_models,
+                                     judge_model=cfg.judge.model),
+    }
+    path = Path(cfg.runs_dir) / "costs.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as fh:
+        fh.write(_json.dumps(rec) + "\n")
 
 
 def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
@@ -217,11 +271,16 @@ def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
         cand_path = Path(cfg.runs_dir) / f"{file_prefix}_{args.scenario}_{model_slug}.jsonl"
         cand_path.parent.mkdir(parents=True, exist_ok=True)
         fh = cand_path.open("w")
+        import time
+        started = time.perf_counter()
         result = asyncio.run(runner(
             cfg, scenario, beam_width=args.beam, depth=args.depth, n_proposals=args.proposals,
             on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
         ))
         fh.close()
+        _log_cost(cfg, cmd=file_prefix, scenario=args.scenario,
+                  target_model=cfg.target.model, budget_summary=result.budget,
+                  wall_clock_s=time.perf_counter() - started, solved=result.solved)
         tag = f"[run {i + 1}/{args.runs}] "
         print(tag + result.summary().replace("\n", "\n" + " " * len(tag)))
         if result.solved:
@@ -263,7 +322,12 @@ def _agentic(cfg: Config, args) -> int:
         from mta.search.agentic_loop import (
             run_indirect_injection, save_attempt_vectors, write_attempts,
         )
+        import time
+        started = time.perf_counter()
         result = asyncio.run(run_indirect_injection(cfg, scenario, args.attempts))
+        _log_cost(cfg, cmd="agentic_indirect", scenario=args.scenario,
+                  target_model=cfg.target.model, budget_summary=result.budget,
+                  wall_clock_s=time.perf_counter() - started, solved=result.solved)
         write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
         print(result.summary())
         if result.solved:
@@ -290,7 +354,12 @@ def _agentic(cfg: Config, args) -> int:
                   "'solved' is a CANDIDATE -- review the transcript before treating it as a break.")
             return 0 if n_solved else 2
         from mta.search.agentic_loop import run_content_scenario, write_attempts
+        import time
+        started = time.perf_counter()
         result = asyncio.run(run_content_scenario(cfg, scenario, args.attempts))
+        _log_cost(cfg, cmd="agentic_content", scenario=args.scenario,
+                  target_model=cfg.target.model, budget_summary=result.budget,
+                  wall_clock_s=time.perf_counter() - started, solved=result.solved)
         write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
         print(result.summary())
         return 0 if result.solved else 2
@@ -301,7 +370,12 @@ def _agentic(cfg: Config, args) -> int:
               "(verifiable judge -- trustworthy).")
         return 0 if n_solved else 2
 
+    import time
+    started = time.perf_counter()
     result = asyncio.run(run_agentic_single(cfg, scenario, args.attempts))
+    _log_cost(cfg, cmd="agentic_single", scenario=args.scenario,
+              target_model=cfg.target.model, budget_summary=result.budget,
+              wall_clock_s=time.perf_counter() - started, solved=result.solved)
     write_attempts(result, Path(cfg.runs_dir) / f"agentic_{args.scenario}.jsonl")
     print(result.summary())
     return 0 if result.solved else 2
@@ -322,11 +396,16 @@ def _refine(cfg: Config, args) -> int:
     cand_path = Path(cfg.runs_dir) / f"refine_{args.scenario}.jsonl"
     cand_path.parent.mkdir(parents=True, exist_ok=True)
     fh = cand_path.open("w")
+    import time
+    started = time.perf_counter()
     result = asyncio.run(run_injection_refine(
         cfg, scenario, rounds=args.rounds, beam_width=args.beam, n_proposals=args.proposals,
         on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
     ))
     fh.close()
+    _log_cost(cfg, cmd="refine", scenario=args.scenario,
+              target_model=cfg.target.model, budget_summary=result.budget,
+              wall_clock_s=time.perf_counter() - started, solved=result.solved)
     lib = save_vectors(result, Path("data/vectors"))
     print(result.summary())
     if lib:
@@ -343,7 +422,11 @@ def _sweep_models(cfg: Config, args) -> int:
     if getattr(args, "attacker_model", None):
         _set_attacker(cfg, args.attacker_model)
     models = [m for m in args.models.split(",") if m.strip()]
-    matrix = asyncio.run(run_sweep(cfg, scenario, models, args.attacks))
+    import time
+    started = time.perf_counter()
+    matrix = asyncio.run(run_sweep(cfg, scenario, models, args.attacks, trials=args.trials,
+                                   trials_max=args.trials_max,
+                                   promote_threshold=args.promote_threshold))
     out = write_report(matrix, Path(cfg.reports_dir))
     print(matrix.markdown())
     print(f"\nreport: {out}")
@@ -363,6 +446,14 @@ def _sweep_models(cfg: Config, args) -> int:
                 "ts": _time.strftime("%Y-%m-%dT%H:%M:%S"),
             }) + "\n")
     print(f"attempts (payloads + reasons): {log}")
+    # run record for the efficiency report (no Budget on the sweep path: the
+    # generated attacks are the attacker spend, cell trials the target spend).
+    target_calls = sum(c["trials"] for c in matrix.cells.values() if c)
+    solved = any(c and c["breaks"] > 0 for c in matrix.cells.values())
+    _log_cost(cfg, cmd="sweep-models", scenario=args.scenario,
+              target_model=",".join(matrix.models), budget_summary=None,
+              wall_clock_s=time.perf_counter() - started, solved=solved,
+              extra_calls={"target_calls": target_calls, "attacker_calls": 1})
     return 0
 
 
@@ -413,12 +504,21 @@ def _pick_vector(cfg: Config, args) -> int:
             rows = [r for r in rows if r.get("ts") == last_ts]
 
     if args.list:
+        from mta.stats import fmt_reliability
         for i, r in enumerate(rows):
             preview = (_vector_turns(r) or [""])[0][:70].replace("\n", " ")
             tag = f"[{r['strategy']}]" if r.get("strategy") else ""
             model = r.get("validated_against", "").split("/")[-1]
             model = f"({model}) " if model else ""
-            print(f"[{i}] {tag} {model}{preview}")
+            rel = ""
+            if r.get("reliability"):
+                cells = [f"{m.split('/')[-1]} {fmt_reliability(c['breaks'], c['trials'])}"
+                         + ("✔" if c.get("eligible") else "")
+                         for m, c in r["reliability"].items()]
+                n_eligible = len(r.get("arena_eligible_models", []))
+                rel = (f"  <{' ; '.join(cells)}>"
+                       f"  arena-eligible: {n_eligible}/{len(r['reliability'])}")
+            print(f"[{i}] {tag} {model}{preview}{rel}")
         print(f"({len(rows)} entries" + (" in last batch)" if args.last_batch else ")"))
         return 0
 
@@ -487,10 +587,14 @@ def _refine_manual(cfg: Config, args) -> int:
 
 
 def _replay(cfg: Config, args) -> int:
+    import time
+
     from mta.eval.replay import (
-        load_vectors, run_agentic_replay, run_content_replay, run_replay, write_report,
+        load_vectors, run_agentic_replay, run_content_replay, run_replay,
+        stamp_reliability, write_report,
     )
     from mta.scenarios import get_scenario
+    from mta.stats import arena_eligible
     from pathlib import Path
 
     scenario = get_scenario(args.scenario)
@@ -500,15 +604,35 @@ def _replay(cfg: Config, args) -> int:
         return 1
     models = [m for m in args.models.split(",") if m.strip()]
     kind = getattr(scenario, "kind", "")
+    started = time.perf_counter()
     if kind == "chat_content":
-        matrix = asyncio.run(run_content_replay(cfg, scenario, models, vectors, trials=args.trials))
+        matrix = asyncio.run(run_content_replay(cfg, scenario, models, vectors, trials=args.trials,
+                                                trials_max=args.trials_max,
+                                                promote_threshold=args.promote_threshold))
     elif kind == "agentic":
-        matrix = asyncio.run(run_agentic_replay(cfg, scenario, models, vectors, trials=args.trials))
+        matrix = asyncio.run(run_agentic_replay(cfg, scenario, models, vectors, trials=args.trials,
+                                                trials_max=args.trials_max,
+                                                promote_threshold=args.promote_threshold))
     else:  # single-shot injection (indirect / secret extraction)
-        matrix = asyncio.run(run_replay(cfg, scenario, models, vectors, trials=args.trials))
+        matrix = asyncio.run(run_replay(cfg, scenario, models, vectors, trials=args.trials,
+                                        trials_max=args.trials_max,
+                                        promote_threshold=args.promote_threshold))
     out = write_report(matrix, Path(cfg.reports_dir))
+    stamped = stamp_reliability(matrix)
     print(matrix.markdown())
     print(f"\nreport: {out}")
+    if stamped:
+        print(f"reliability stamped into: {stamped}")
+    # No Budget on the replay path: derive the call counts from the cells
+    # (target calls = fired trials; the content judge runs once per trial).
+    target_calls = sum(c["trials"] for c in matrix.cells.values() if c)
+    judge_calls = target_calls if kind == "chat_content" else 0
+    solved = any(c and arena_eligible(c["breaks"], c["trials"], args.promote_threshold)
+                 for c in matrix.cells.values())
+    _log_cost(cfg, cmd="replay-vectors", scenario=args.scenario,
+              target_model=",".join(matrix.models), budget_summary=None,
+              wall_clock_s=time.perf_counter() - started, solved=solved,
+              extra_calls={"target_calls": target_calls, "judge_calls": judge_calls})
     return 0
 
 
