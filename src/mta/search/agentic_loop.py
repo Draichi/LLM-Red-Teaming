@@ -480,6 +480,8 @@ def save_attempt_vectors(result: AgenticRunResult, model: str, vectors_dir: Path
     import json
     import time
 
+    from mta.judge.rubric import JUDGE_VERSION
+
     solved = [a for a in result.attempts if a.verdict.solved]
     if not solved:
         return 0
@@ -492,7 +494,8 @@ def save_attempt_vectors(result: AgenticRunResult, model: str, vectors_dir: Path
                 "candidate_needs_human_review": needs_review,
                 "validated_against": model, "strategy": a.strategy,
                 "score": a.verdict.score, "payload": a.move,
-                "target_response": a.response, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "target_response": a.response, "judge_version": JUDGE_VERSION,
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
             }) + "\n")
     return len(solved)
 
@@ -773,6 +776,8 @@ def save_beam_vector(result: AgenticBeamResult, model: str, vectors_dir: Path,
     import json
     import time
 
+    from mta.judge.rubric import JUDGE_VERSION
+
     vectors_dir.mkdir(parents=True, exist_ok=True)
     out = vectors_dir / f"{result.scenario}.jsonl"
     with out.open("a") as fh:
@@ -784,6 +789,7 @@ def save_beam_vector(result: AgenticBeamResult, model: str, vectors_dir: Path,
             "strategy_trace": result.strategy_trace,
             "turns": list(result.attacker_turns),
             "score": result.best_score,
+            "judge_version": JUDGE_VERSION,
             "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }) + "\n")
     return out
@@ -797,6 +803,8 @@ def save_vectors(result: RefineResult, vectors_dir: Path) -> Path | None:
     import json
     import time
 
+    from mta.judge.rubric import JUDGE_VERSION
+
     vectors_dir.mkdir(parents=True, exist_ok=True)
     out = vectors_dir / f"{result.scenario}.jsonl"
     with out.open("a") as fh:
@@ -809,6 +817,7 @@ def save_vectors(result: RefineResult, vectors_dir: Path) -> Path | None:
                 "score": v.verdict.score,
                 "payload": v.payload,
                 "target_response": v.response,
+                "judge_version": JUDGE_VERSION,
                 "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
             }) + "\n")
     return out

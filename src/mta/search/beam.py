@@ -157,6 +157,7 @@ async def beam_search(
                         | {
                             "axes": verdict.axes,
                             "binding_axis": verdict.binding_axis,
+                            "judge_version": getattr(verdict, "judge_version", ""),
                         },
                         "transcript": conv.as_list(),
                         "strategy_trace": list(conv.strategy_trace),

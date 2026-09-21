@@ -42,6 +42,13 @@ def main(argv: list[str] | None = None) -> int:
     p_report = sub.add_parser("report", parents=[common], help="offline: write the final judge_calibration.md from persisted scores")
     p_report.add_argument("--efficiency", action="store_true",
                           help="write reports/efficiency.md from data/runs/costs.jsonl instead")
+    p_jr = sub.add_parser("judge-robustness", parents=[common],
+                          help="item 1: measure judge flip rates under framing transforms -> reports/judge_robustness.md")
+    p_jr.add_argument("--n", type=int, default=100, help="max items per direction (blinding / false-positive)")
+    p_jr.add_argument("--transforms", default="all",
+                      help="all | blinding | false_positive | comma-separated transform names")
+    p_jr.add_argument("--scenario", default=None,
+                      help="label the report; the fragile-rate table scans data/vectors")
     p_gate = sub.add_parser("gate-eval", parents=[common], help="Phase 2: validate the classifier gate (blinding rate + judge-call savings)")
     p_gate.add_argument("--sample", type=int, default=200)
     p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
@@ -72,6 +79,9 @@ def main(argv: list[str] | None = None) -> int:
     p_rep.add_argument("--trials-max", type=int, default=20, help="hard cap on trials per cell")
     p_rep.add_argument("--promote-threshold", type=float, default=0.5,
                        help="a cell is arena-eligible when its Wilson LOWER bound clears this")
+    p_rep.add_argument("--skip-fragile-audit", action="store_true",
+                       help="chat_content only: do not re-grade judged breaks on the framing-stripped "
+                       "transcript (the reward-hacking audit is ON by default, item 1)")
     p_sw = sub.add_parser("sweep-models", parents=[common], help="run the same generated attacks across models -> susceptibility matrix")
     p_sw.add_argument("--scenario", default="ransomware_injection")
     p_sw.add_argument("--models", required=True, help="comma-separated target models")
@@ -132,6 +142,8 @@ def main(argv: list[str] | None = None) -> int:
         return _sweep(cfg)
     if args.cmd == "report":
         return _report(cfg, args.efficiency)
+    if args.cmd == "judge-robustness":
+        return _judge_robustness(cfg, args)
     if args.cmd == "gate-eval":
         return _gate_eval(cfg, args.sample)
     if args.cmd == "agentic":
@@ -204,6 +216,23 @@ def _report(cfg: Config, efficiency: bool = False) -> int:
 
     out = finalize_report(cfg)
     print(f"wrote {out}")
+    return 0
+
+
+def _judge_robustness(cfg: Config, args) -> int:
+    from pathlib import Path
+
+    from mta.judge_robustness import parse_transforms, run_judge_robustness, write_report
+
+    transforms = parse_transforms(args.transforms)
+    result = asyncio.run(run_judge_robustness(cfg, n=args.n, transforms=transforms))
+    out = write_report(result, Path("data/vectors"), Path(cfg.reports_dir),
+                       scenario=args.scenario)
+    print(f"wrote {out}")
+    for c in result.cells:
+        lo, hi = c.interval
+        print(f"  {c.direction:<15} {c.transform:<20} {c.flips}/{c.n} "
+              f"[{lo:.2f}-{hi:.2f}]")
     return 0
 
 
@@ -608,7 +637,8 @@ def _replay(cfg: Config, args) -> int:
     if kind == "chat_content":
         matrix = asyncio.run(run_content_replay(cfg, scenario, models, vectors, trials=args.trials,
                                                 trials_max=args.trials_max,
-                                                promote_threshold=args.promote_threshold))
+                                                promote_threshold=args.promote_threshold,
+                                                audit_fragile=not args.skip_fragile_audit))
     elif kind == "agentic":
         matrix = asyncio.run(run_agentic_replay(cfg, scenario, models, vectors, trials=args.trials,
                                                 trials_max=args.trials_max,
