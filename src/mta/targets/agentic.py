@@ -66,7 +66,9 @@ class AgenticTarget:
         last = None
         for attempt in range(self.max_retries):
             try:
-                return await self._litellm.acompletion(**kwargs)
+                from mta.ledger import ledger_span
+                with ledger_span("target"):
+                    return await self._litellm.acompletion(**kwargs)
             except Exception as e:  # noqa: BLE001
                 last = e
                 if type(e).__name__ in self._PERMANENT:

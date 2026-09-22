@@ -46,6 +46,8 @@ def main(argv: list[str] | None = None) -> int:
     p_report = sub.add_parser("report", parents=[common], help="offline: write the final judge_calibration.md from persisted scores")
     p_report.add_argument("--efficiency", action="store_true",
                           help="write reports/efficiency.md from data/runs/costs.jsonl instead")
+    p_report.add_argument("--spend", action="store_true",
+                          help="write reports/spend.md from the per-call ledger (data/ledger.db)")
     p_jr = sub.add_parser("judge-robustness", parents=[common],
                           help="item 1: measure judge flip rates under framing transforms -> reports/judge_robustness.md")
     p_jr.add_argument("--n", type=int, default=100, help="max items per direction (blinding / false-positive)")
@@ -71,6 +73,9 @@ def main(argv: list[str] | None = None) -> int:
     p_ag.add_argument("--runs", type=int, default=1, help="run the beam N times (stochastic) to mine several vectors")
     p_ag.add_argument("--sliced", action="store_true",
                       help="chat_content scenarios with a slice_plan: run the criterion-sliced ladder instead of the free beam")
+    p_ag.add_argument("--max-tokens", type=int, default=None,
+                      help="override target.max_tokens for this run (e.g. raise the cap when "
+                      "deliveries die truncated mid-procedure)")
     p_ref = sub.add_parser("refine", parents=[common], help="feedback-driven payload refinement -> validated vector library")
     p_ref.add_argument("--scenario", default="ransomware_injection")
     p_ref.add_argument("--model", default=None, help="override target model")
@@ -141,6 +146,11 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     cfg = Config.load(args.config)
+    from mta.ledger import enable_ledger, set_scenario
+
+    enable_ledger()  # per-call spend ledger: every litellm call, all providers
+    if getattr(args, "scenario", None):
+        set_scenario(args.scenario)
     if getattr(args, "judge_model", None):
         from mta.eval.bench import normalize_model
         cfg.judge.model = normalize_model(args.judge_model)
@@ -150,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "sweep-threshold":
         return _sweep(cfg)
     if args.cmd == "report":
-        return _report(cfg, args.efficiency)
+        return _report(cfg, args.efficiency, args.spend)
     if args.cmd == "judge-robustness":
         return _judge_robustness(cfg, args)
     if args.cmd == "judge-ab":
@@ -230,10 +240,18 @@ def _sweep(cfg: Config) -> int:
     return 0
 
 
-def _report(cfg: Config, efficiency: bool = False) -> int:
-    if efficiency:
-        from pathlib import Path
+def _report(cfg: Config, efficiency: bool = False, spend: bool = False) -> int:
+    from pathlib import Path
 
+    if spend:
+        from mta.ledger import DB_PATH, spend_markdown
+
+        out = Path(cfg.reports_dir) / "spend.md"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(spend_markdown(DB_PATH, cfg.prices))
+        print(f"wrote {out}")
+        return 0
+    if efficiency:
         from mta.eval.efficiency import write_efficiency_report
 
         out = write_efficiency_report(Path(cfg.runs_dir), Path(cfg.reports_dir))
@@ -394,6 +412,8 @@ def _agentic(cfg: Config, args) -> int:
     if getattr(args, "model", None):
         from mta.eval.bench import normalize_model
         cfg.target.model = normalize_model(args.model)
+    if getattr(args, "max_tokens", None):
+        cfg.target.max_tokens = args.max_tokens
     if getattr(args, "attacker_model", None):
         _set_attacker(cfg, args.attacker_model)
     if getattr(scenario, "kind", "") == "indirect":

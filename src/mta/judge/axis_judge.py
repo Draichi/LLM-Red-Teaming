@@ -186,7 +186,9 @@ class AxisJudge:
                     )
                     if self.cfg.disable_thinking:
                         kwargs["extra_body"] = thinking_off_extra_body()
-                    resp = await self._litellm.acompletion(**kwargs)
+                    from mta.ledger import ledger_span
+                    with ledger_span("judge"):
+                        resp = await self._litellm.acompletion(**kwargs)
                 obj = extract_json_object(resp.choices[0].message.content)
                 raw_scores = {
                     a.name: int(obj.get("axis_scores", {}).get(a.name, 0))

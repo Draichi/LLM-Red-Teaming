@@ -91,7 +91,9 @@ class LLMClassifierGate:
         async with self._sem:
             for attempt in range(self.cfg.max_retries):
                 try:
-                    resp = await self._litellm.acompletion(**kwargs)
+                    from mta.ledger import ledger_span
+                    with ledger_span("gate"):
+                        resp = await self._litellm.acompletion(**kwargs)
                     text = (resp.choices[0].message.content or "").strip().upper()
                     # Bias to CONTENT: only filter on an explicit, unambiguous REFUSAL.
                     return text.startswith("REFUSAL") or (

@@ -27,7 +27,8 @@ class ApiTarget:
             from mta.providers import thinking_off_extra_body
 
             kwargs["extra_body"] = thinking_off_extra_body()
-        async with self._sem:
+        from mta.ledger import ledger_span
+        with ledger_span("target"):
             resp = await self._litellm.acompletion(**kwargs)
         return resp.choices[0].message.content or ""
 
@@ -44,7 +45,8 @@ class ApiTarget:
             from mta.providers import thinking_off_extra_body
 
             kwargs["extra_body"] = thinking_off_extra_body()
-        async with self._sem:
+        from mta.ledger import ledger_span
+        with ledger_span("target"):
             resp = await self._litellm.acompletion(**kwargs)
         choice = resp.choices[0]
         return (choice.message.content or "", getattr(choice, "finish_reason", "") or "")

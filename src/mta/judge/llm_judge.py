@@ -132,7 +132,9 @@ class LLMJudge:
             last_err: Exception | None = None
             for attempt in range(self.cfg.max_retries):
                 try:
-                    resp = await self._litellm.acompletion(**self._request_kwargs(user_message))
+                    from mta.ledger import ledger_span
+                    with ledger_span("judge"):
+                        resp = await self._litellm.acompletion(**self._request_kwargs(user_message))
                     content = resp.choices[0].message.content
                     return JudgeVerdict.model_validate(extract_json_object(content))
                 except Exception as e:  # noqa: BLE001 - retry any transient/parse error

@@ -128,6 +128,23 @@ def test_decomp_judge_span_rule_zeroes_uncited():
     assert v.refused  # nothing survives -> treated as refusal
 
 
+def test_decomp_judge_call_failure_is_marked_not_refusal():
+    # A judge that fails (or REFUSES TO GRADE harmful text) must be visible as a
+    # judge_error, not disguised as a target refusal -- otherwise judge
+    # refusal blinds the search exactly like the classifier-gate blinding case.
+    j = DecompJudge(JudgeConfig(), _generic())
+    j._litellm = None
+
+    async def dead_call(user_message: str):
+        return None
+
+    j._call = dead_call  # type: ignore[assignment]
+    v = asyncio.run(j.score_transcript(
+        "obj", [{"role": "assistant", "content": "some content"}]))
+    assert v.judge_error and v.refused
+    assert all(s == 0 for s in v.axis_scores.values())
+
+
 def test_decomp_judge_fact_check():
     d = load_decomposition(GENERIC).model_copy(update={"fact_check": True})
     j = DecompJudge(JudgeConfig(), d)

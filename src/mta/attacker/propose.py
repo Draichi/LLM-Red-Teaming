@@ -144,8 +144,10 @@ class LLMProposer:
             for attempt in range(5):
                 try:
                     kwargs = self._attacker_kwargs(current, system, user, self._max_tokens)
+                    from mta.ledger import ledger_span
                     async with self._sem:
-                        resp = await self._litellm.acompletion(**kwargs)
+                        with ledger_span("attacker"):
+                            resp = await self._litellm.acompletion(**kwargs)
                     text = strip_meta(resp.choices[0].message.content or "")
                     if not text:
                         continue

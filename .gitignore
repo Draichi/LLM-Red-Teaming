@@ -19,6 +19,8 @@ data/vectors/
 data/candidates/
 # Per-scenario writeups (intel, kill log, payloads) -- work product, never versioned.
 data/writeups/
+# Per-call spend ledger (SQLite) -- local telemetry, regenerated every run.
+data/ledger.db
 reports/*.md
 reports/*.png
 reports/*.jsonl
