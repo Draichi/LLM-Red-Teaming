@@ -8,8 +8,8 @@ behaviors_path: data/behaviors/objectives.jsonl
 # Operator rule: deepseek + GLM + Qwen + Kimi; each proposal crafted by a different
 # family, refusals fall through to the next model.
 attacker_models:
-  - deepseek/deepseek-chat
-  - zai-org/glm-4.6
+  - deepseek-ai/DeepSeek-V3.1
+  - zai-org/GLM-4.6
   - Qwen/Qwen3-32B
   - moonshotai/Kimi-K2-Instruct
 runs_dir: data/runs
@@ -20,8 +20,8 @@ reports_dir: reports
 # (2026-09). Featherless tiers vary -- replace with invoiced numbers as they
 # arrive. Missing model -> counted in calls only, no dollars.
 prices:
-  featherless_ai/deepseek/deepseek-chat: 0.001
-  featherless_ai/zai-org/glm-4.6: 0.0034
+  featherless_ai/deepseek-ai/DeepSeek-V3.1: 0.001
+  featherless_ai/zai-org/GLM-4.6: 0.0034
   featherless_ai/Qwen/Qwen3-32B: 0.0007
   featherless_ai/moonshotai/Kimi-K2-Instruct: 0.003
   featherless_ai/Qwen/Qwen3-235B-A22B: 0.002
@@ -32,19 +32,19 @@ prices:
   openrouter/meta-llama/llama-3.3-70b-instruct: 0.0013
 
 judge:
-  # Large open-weight judge on Featherless, reasoning disabled for speed.
-  # Needs FEATHERLESS_AI_API_KEY. Alternatives: deepseek-ai/DeepSeek-V3-0324
-  # (non-reasoning), moonshotai/Kimi-K2-Instruct, or a frontier id
-  # (anthropic/claude-opus-5) which uses native JSON-schema output.
-  model: featherless_ai/Qwen/Qwen3-235B-A22B
+  # Operator rule (2026-09-21): judge = gpt-4o-mini via OpenRouter. Western
+  # judges grade arena content fine (validated in the cyanide campaign: haiku
+  # gave discriminative per-axis scores on explicit cyanide procedures).
+  # Non-reasoning model: disable_thinking MUST stay false (the kwarg can
+  # corrupt non-reasoning templates) and json_object is the safe structured
+  # path on OpenRouter.
+  model: openrouter/openai/gpt-4o-mini
   temperature: 0.0
   max_tokens: 1024
-  # Qwen3-235B = 4 units/request; feather_pro_plus limit = 4 units => 1 at a time.
-  # Raise this only if you upgrade the plan or pick a lower-unit model class.
-  max_concurrency: 1
+  max_concurrency: 4
   max_retries: 3
-  disable_thinking: true      # chat_template_kwargs.enable_thinking=false
-  json_mode: auto             # json_schema when supported, else json_object
+  disable_thinking: false     # non-reasoning OpenRouter model
+  json_mode: json_object      # safe structured-output path on OpenRouter
   # Accepted operating point (full-602 calibration): kappa 0.713 (>=0.7 target met),
   # recall 0.86, FPR 0.146. FPR<0.1 is unreachable while kappa>=0.7 with this judge
   # -- documented as a known limitation in reports/judge_calibration.md.

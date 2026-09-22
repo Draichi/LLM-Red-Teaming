@@ -23,13 +23,15 @@ def test_record_and_aggregate(tmp_path):
                 latency_s=2.5, db_path=db, component="target", scenario="cyanide")
     record_call(model="mB", prompt_tokens=10, completion_tokens=5,
                 latency_s=0.5, status="error", db_path=db,
-                component="attacker", scenario="cyanide")
+                component="attacker", scenario="cyanide",
+                error="requires more credits, or fewer max_tokens")
     md = spend_markdown(db, prices={"mA": 0.001, "mB": 0.002})
     assert "cyanide" in md and "target" in md and "attacker" in md
     assert "mA" in md and "mB" in md
     assert "| 2 | 0 | 300 | 130 |" in md        # mA row: calls, errors, pt, ct
     assert "0.0020" in md                        # 2 x mA flat price
     assert "calls 3 | errors 1 |" in md          # total row
+    assert "requires more credits" in md         # error section surfaces causes
 
 
 def test_spans_and_scenario_contextvars(tmp_path):

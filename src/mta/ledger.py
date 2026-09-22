@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS calls (
     prompt_tokens INTEGER NOT NULL DEFAULT 0,
     completion_tokens INTEGER NOT NULL DEFAULT 0,
     latency_s REAL,
-    status TEXT NOT NULL DEFAULT 'ok'
+    status TEXT NOT NULL DEFAULT 'ok',
+    error TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_calls_ts ON calls(ts);
 CREATE INDEX IF NOT EXISTS idx_calls_scenario ON calls(scenario);
@@ -69,23 +70,29 @@ def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.executescript(_SCHEMA)
+    # migrate databases created before the error column existed
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(calls)")}
+    if "error" not in cols:
+        conn.execute("ALTER TABLE calls ADD COLUMN error TEXT NOT NULL DEFAULT ''")
+        conn.commit()
     return conn
 
 
 def record_call(*, model: str, prompt_tokens: int = 0,
                 completion_tokens: int = 0, latency_s: float | None = None,
-                status: str = "ok", component: str | None = None,
+                status: str = "ok", error: str = "", component: str | None = None,
                 scenario: str | None = None,
                 db_path: Path = DB_PATH) -> None:
     conn = connect(db_path)
     try:
         conn.execute(
             "INSERT INTO calls (ts, scenario, component, model, prompt_tokens,"
-            " completion_tokens, latency_s, status) VALUES (?,?,?,?,?,?,?,?)",
+            " completion_tokens, latency_s, status, error) VALUES (?,?,?,?,?,?,?,?,?)",
             (time.time(),
              _scenario.get() if scenario is None else scenario,
              _component.get() if component is None else component,
-             model, prompt_tokens, completion_tokens, latency_s, status))
+             model, prompt_tokens, completion_tokens, latency_s, status,
+             error[:300]))
         conn.commit()
     finally:
         conn.close()
@@ -127,9 +134,16 @@ class LedgerLogger:
             pt, ct = (0, 0)
             if response_obj is not None:
                 pt, ct = self._usage(response_obj)
+            # the failure exception travels in kwargs['exception'] (litellm);
+            # storing its text is what turns "judge 100% error" into a one-query
+            # diagnosis (credits outage vs throttle vs content filter)
+            err = ""
+            if status != "ok":
+                exc = kwargs.get("exception") if isinstance(kwargs, dict) else None
+                err = str(exc) if exc is not None else ""
             record_call(model=model, prompt_tokens=pt, completion_tokens=ct,
                         latency_s=self._latency(start_time, end_time),
-                        status=status, db_path=self.db_path)
+                        status=status, error=err, db_path=self.db_path)
         except Exception:
             pass
 
@@ -215,6 +229,17 @@ def spend_markdown(db_path: Path = DB_PATH, prices: dict | None = None) -> str:
              f"{len(rows)} call(s) logged. USD = flat per-call estimate from the "
              "config `prices` table; tokens are the raw provider-reported truth.",
              ""]
+
+    errors: dict[str, int] = {}
+    for r in rows:
+        if r["status"] != "ok" and r.get("error"):
+            key = r["error"][:120]
+            errors[key] = errors.get(key, 0) + 1
+    if errors:
+        lines += ["## Errors (distinct, by count)", ""]
+        for msg, n in sorted(errors.items(), key=lambda kv: -kv[1])[:8]:
+            lines.append(f"- **{n}x** `{msg}`")
+        lines.append("")
 
     def _table(title: str, keys: list[str], folded: dict):
         lines.extend([f"## {title}", "",

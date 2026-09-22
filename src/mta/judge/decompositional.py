@@ -29,6 +29,7 @@ two-tier cheap gate stays in front of the whole judge on the search path.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from pathlib import Path
 
@@ -209,6 +210,11 @@ class DecompJudge:
     def __init__(self, cfg: JudgeConfig, decomposition: Decomposition):
         self.cfg = cfg
         self.decomp = decomposition
+        # bounded concurrency, same contract as LLMJudge/AxisJudge: without
+        # this, fact-check fan-out hits the provider unbounded and 429-storms
+        # the judge (seen in the ledger: ~50% haiku failures under 4
+        # concurrent mining processes)
+        self._sem = asyncio.Semaphore(cfg.max_concurrency)
         import litellm
 
         self._litellm = litellm
@@ -297,7 +303,8 @@ class DecompJudge:
                 )
                 if self.cfg.disable_thinking:
                     kwargs["extra_body"] = thinking_off_extra_body()
-                resp = await self._litellm.acompletion(**kwargs)
+                async with self._sem:
+                    resp = await self._litellm.acompletion(**kwargs)
                 return extract_json_object(resp.choices[0].message.content)
             except Exception as e:  # noqa: BLE001 - retry transient/parse, then fail soft
                 last_err = e

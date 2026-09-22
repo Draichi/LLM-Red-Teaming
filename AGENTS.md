@@ -61,6 +61,16 @@ These survive the provider migration:
   comma-separated list rotates families across proposals (each proposal is
   crafted by a different attacker): plan diversity beats surface re-lexing, and
   one refusing/budget-burning attacker no longer thins the fan-out.
+- **Operator model policy (2026-09-21, durable):** judge = `openrouter/openai/
+  gpt-4o-mini` (the credits outage of 2026-09-21 showed a paid judge dying
+  looks exactly like a target wall -- keep the judge on the pool you recharge);
+  targets = OpenRouter `:free` models only (established frontier models are
+  reference walls, not target spend; new/niche vendors match the arena
+  population better anyway); attackers stay on the Featherless rotation
+  (DeepSeek-V3.1 / GLM-4.6 / Qwen3-32B / Kimi-K2) until the Featherless
+  subscription ends, then migrate attackers to OpenRouter too. The per-call
+  ledger (`mta report --spend`) is how a dying provider gets told apart from a
+  wall: check error messages there first.
 
 ## Arena lessons (durable, from the 2026-09 email_ignore campaign)
 
