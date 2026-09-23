@@ -112,7 +112,7 @@ async def test_scorer_averages_both_orderings_and_logs(tmp_path):
 
     llm = _FakeLLM(['{"more_real": "A"}', '{"more_real": "B"}'])  # MTA wins both orders
     scorer = RealismScorer(
-        RealismConfig(discriminator_model="openrouter/openai/gpt-4o-mini"),
+        RealismConfig(discriminator_model="openrouter/google/gemini-3.8-flash"),
         corpus_dir=corpus,
         llm=llm,
     )
@@ -136,7 +136,7 @@ async def test_scorer_with_empty_corpus_returns_none(tmp_path):
     corpus = tmp_path / "empty"
     corpus.mkdir()
     scorer = RealismScorer(
-        RealismConfig(discriminator_model="openrouter/openai/gpt-4o-mini"),
+        RealismConfig(discriminator_model="openrouter/google/gemini-3.8-flash"),
         corpus_dir=corpus,
         llm=_FakeLLM([]),
     )
@@ -149,7 +149,7 @@ async def test_scorer_picks_only_matching_scenario_corpus(tmp_path):
     corpus.mkdir()
     (corpus / "hotel_booking_1.txt").write_text("user: book a room\nassistant: ok")
     scorer = RealismScorer(
-        RealismConfig(discriminator_model="openrouter/openai/gpt-4o-mini"),
+        RealismConfig(discriminator_model="openrouter/google/gemini-3.8-flash"),
         corpus_dir=corpus,
         llm=_FakeLLM([]),
     )

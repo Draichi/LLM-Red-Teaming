@@ -35,8 +35,15 @@ from pydantic import BaseModel
 class RealismConfig(BaseModel):
     """Discriminator settings. The discriminator should be a STRONG model: the
     metric measures transcript realism, and a weak discriminator that guesses
-    randomly scores everything 0.5 regardless of quality."""
-    discriminator_model: str = "openrouter/openai/gpt-4o-mini"
+    randomly scores everything 0.5 regardless of quality.
+
+    Default is MEASURED, not arbitrary (2026-09-23): gemini-3.8-flash is the
+    only discriminator whose benign-vs-benign baseline sat at 0.50 (calibrated,
+    no style preference). gpt-4o-mini scored 0.67 on the same check -- it
+    systematically prefers the shorter/casual text, so its scores are noise.
+    Before trusting ANY discriminator, run the benign-vs-benign sanity baseline
+    and require ~0.5."""
+    discriminator_model: str = "openrouter/google/gemini-3.8-flash"
     temperature: float = 0.0
     max_tokens: int = 256
     max_concurrency: int = 4
