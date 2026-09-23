@@ -21,6 +21,9 @@ data/candidates/
 data/writeups/
 # Per-call spend ledger (SQLite) -- local telemetry, regenerated every run.
 data/ledger.db
+# Learned mechanism exemplars (proven vectors decomposed into features) --
+# attack work product, same policy as vectors.
+data/mechanisms.jsonl
 reports/*.md
 reports/*.png
 reports/*.jsonl

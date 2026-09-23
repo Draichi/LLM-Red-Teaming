@@ -120,6 +120,10 @@ class Config(BaseModel):
     attacker_disable_thinking: bool = True
     # Even with thinking off, give the attack turn room.
     attacker_max_tokens: int = 2048
+    # Proposer kind: 'taxonomy' (default; instantiates strategy labels) or
+    # 'inventor' (diagnose the wall -> design a mechanism -> instantiate; the
+    # mechanism-design upgrade from the cyanide_extraction campaign lesson).
+    proposer: str = "taxonomy"
     behaviors_path: Path = Path("data/behaviors/objectives.jsonl")
     runs_dir: Path = Path("data/runs")
     reports_dir: Path = Path("reports")

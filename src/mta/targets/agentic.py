@@ -58,22 +58,37 @@ class AgenticTarget:
 
     _reported_fail = False
 
+    # Per-provider circuit breaker: after this many CONSECUTIVE failures a
+    # model fails fast for the rest of the process. Arize-flagged pattern: a
+    # dying provider (Nex AGI 5xx/Cloudflare, 5-min hangs) otherwise consumes
+    # the full timeout on every call and stalls the whole sweep.
+    _CIRCUIT_THRESHOLD = 3
+    _consecutive_failures: dict[str, int] = {}
+
     async def _complete(self, **kwargs):
         """acompletion with backoff on transient errors (rate limits). Fails SOFT:
         after retries (or on a permanent error) it returns None instead of raising,
         so one bad call can't crash a long multi-turn/multi-model run -- the caller
         treats a missing response as an empty (non-delivering) turn."""
+        model = kwargs.get("model", "?")
+        if AgenticTarget._consecutive_failures.get(model, 0) >= self._CIRCUIT_THRESHOLD:
+            return None  # circuit open: provider is down, fail fast
         last = None
         for attempt in range(self.max_retries):
             try:
                 from mta.ledger import ledger_span
                 with ledger_span("target"):
-                    return await self._litellm.acompletion(**kwargs)
+                    resp = await self._litellm.acompletion(**kwargs)
+                if resp is not None:
+                    AgenticTarget._consecutive_failures[model] = 0
+                return resp
             except Exception as e:  # noqa: BLE001
                 last = e
                 if type(e).__name__ in self._PERMANENT:
                     break
                 await asyncio.sleep(min(2**attempt, 15))
+        AgenticTarget._consecutive_failures[model] = \
+            AgenticTarget._consecutive_failures.get(model, 0) + 1
         if not AgenticTarget._reported_fail:
             AgenticTarget._reported_fail = True
             print(f"[target] a call failed (continuing with empty turns): "
@@ -103,6 +118,7 @@ class AgenticTarget:
                     temperature=self.cfg.temperature,
                     max_tokens=self.cfg.max_tokens,
                     messages=convo,
+                    timeout=180,  # hung free-tier endpoints must not stall a run
                     **extra,
                 )
                 if resp is None:
@@ -136,6 +152,7 @@ class AgenticTarget:
                 temperature=self.cfg.temperature,
                 max_tokens=self.cfg.max_tokens,
                 messages=convo,
+                timeout=180,
                 **extra,
             )
         text = ((resp.choices[0].message.content if resp else "") or "").strip()

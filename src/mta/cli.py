@@ -60,6 +60,16 @@ def main(argv: list[str] | None = None) -> int:
     p_ab.add_argument("--scenario", required=True)
     p_ab.add_argument("--model", required=True, help="target model to replay the vectors against")
     p_ab.add_argument("--n", type=int, default=20, help="how many saved vectors to compare")
+    p_lv = sub.add_parser("learn-vector", parents=[common],
+                          help="decompose a PROVEN vector into mechanism features and append it "
+                          "to the exemplar library (products become design material)")
+    p_lv.add_argument("--scenario", required=True)
+    p_lv.add_argument("--vector-file", default=None,
+                      help="file with the proven vector's text (default: last saved vector in the library)")
+    p_lv.add_argument("--outcome", required=True,
+                      help="what it achieved, e.g. '1 break + 1 near-miss on the arena panel'")
+    p_lv.add_argument("--source", default="operator-manual")
+    p_lv.add_argument("--domain", default="chemistry")
     p_gate = sub.add_parser("gate-eval", parents=[common], help="Phase 2: validate the classifier gate (blinding rate + judge-call savings)")
     p_gate.add_argument("--sample", type=int, default=200)
     p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
@@ -76,6 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     p_ag.add_argument("--max-tokens", type=int, default=None,
                       help="override target.max_tokens for this run (e.g. raise the cap when "
                       "deliveries die truncated mid-procedure)")
+    p_ag.add_argument("--proposer", choices=["taxonomy", "inventor"], default=None,
+                      help="attacker proposer kind: 'taxonomy' instantiates strategy labels; "
+                      "'inventor' diagnoses the refusal wall, designs a mechanism from the "
+                      "library + learned exemplars, then instantiates it")
     p_ref = sub.add_parser("refine", parents=[common], help="feedback-driven payload refinement -> validated vector library")
     p_ref.add_argument("--scenario", default="ransomware_injection")
     p_ref.add_argument("--model", default=None, help="override target model")
@@ -165,6 +179,8 @@ def main(argv: list[str] | None = None) -> int:
         return _judge_robustness(cfg, args)
     if args.cmd == "judge-ab":
         return _judge_ab(cfg, args)
+    if args.cmd == "learn-vector":
+        return _learn_vector(cfg, args)
     if args.cmd == "gate-eval":
         return _gate_eval(cfg, args.sample)
     if args.cmd == "agentic":
@@ -303,6 +319,28 @@ def _judge_ab(cfg: Config, args) -> int:
     return 0
 
 
+def _learn_vector(cfg: Config, args) -> int:
+    from pathlib import Path
+
+    from mta.attacker.inventor import learn_vector
+    from mta.eval.replay import load_vectors
+
+    if args.vector_file:
+        vector = Path(args.vector_file).read_text().strip()
+    else:
+        vecs = load_vectors(args.scenario, limit=1)
+        if not vecs:
+            print(f"no saved vector in data/vectors/{args.scenario}.jsonl -- pass --vector-file")
+            return 1
+        v = vecs[0]
+        vector = "\n\n".join(v.get("turns") or [v.get("payload", "")]).strip()
+    out = asyncio.run(learn_vector(
+        cfg, scenario=args.scenario, vector=vector, outcome=args.outcome,
+        source=args.source, domain=args.domain))
+    print(f"mechanism exemplar appended to: {out}")
+    return 0
+
+
 def _gate_eval(cfg: Config, sample: int) -> int:
     from mta.judge.gate_eval import run_gate_eval
 
@@ -414,6 +452,8 @@ def _agentic(cfg: Config, args) -> int:
         cfg.target.model = normalize_model(args.model)
     if getattr(args, "max_tokens", None):
         cfg.target.max_tokens = args.max_tokens
+    if getattr(args, "proposer", None):
+        cfg.proposer = args.proposer
     if getattr(args, "attacker_model", None):
         _set_attacker(cfg, args.attacker_model)
     if getattr(scenario, "kind", "") == "indirect":

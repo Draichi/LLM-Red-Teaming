@@ -20,6 +20,9 @@ class Conversation:
     objective: str
     messages: tuple[dict, ...] = ()
     strategy_trace: tuple[str, ...] = ()  # strategy label used at each attacker turn
+    # Judge/verdict context threaded to the attacker (e.g. per-axis scores +
+    # binding axis for mechanism repair). Not part of identity/equality.
+    meta: dict = field(default_factory=dict, compare=False)
 
     def extend(self, *new_messages: dict, strategy: str | None = None) -> "Conversation":
         trace = self.strategy_trace + ((strategy,) if strategy else ())
@@ -27,6 +30,7 @@ class Conversation:
             objective=self.objective,
             messages=self.messages + tuple(new_messages),
             strategy_trace=trace,
+            meta=dict(self.meta),
         )
 
     def as_list(self) -> list[dict]:

@@ -293,6 +293,7 @@ async def run_sweep(cfg: Config, scenario, models: list[str], n_attacks: int,
     """Susceptibility sweep: generate a pool of attacks ONCE, then run the SAME
     attacks against every model. Shows how one attack fares across models and
     surfaces which model is susceptible enough to then develop/refine against."""
+    from mta.attacker.inventor import build_proposer
     from mta.attacker.propose import LLMProposer
     from mta.search.state import Conversation
 
@@ -302,7 +303,7 @@ async def run_sweep(cfg: Config, scenario, models: list[str], n_attacks: int,
             f"{scenario.name} (kind={getattr(scenario, 'kind', '?')}) does not have - "
             f"it is for indirect scenarios; use replay-vectors for multi-turn/agentic ones."
         )
-    proposer = LLMProposer.from_scenario(cfg, scenario, seed=cfg.seed)
+    proposer = build_proposer(cfg, scenario, seed=cfg.seed)
     proposals = await proposer(Conversation(objective=scenario.attacker_objective()), n_attacks)
     vectors = [{"strategy": strat, "payload": payload} for payload, strat in proposals]
     return await run_replay(cfg, scenario, models, vectors, trials=trials,
