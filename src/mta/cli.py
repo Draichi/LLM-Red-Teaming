@@ -70,6 +70,11 @@ def main(argv: list[str] | None = None) -> int:
                       help="what it achieved, e.g. '1 break + 1 near-miss on the arena panel'")
     p_lv.add_argument("--source", default="operator-manual")
     p_lv.add_argument("--domain", default="chemistry")
+    p_lw = sub.add_parser("learn-writeups", parents=[common],
+                          help="ingest every PROVEN vector from an event's writeups into the "
+                          "mechanism exemplar library (kill-log PASS rows + fenced prompts)")
+    p_lw.add_argument("--dir", required=True, help="writeups root to scan (e.g. writeups/hazard_hunt)")
+    p_lw.add_argument("--event", default="hazard_hunt")
     p_gate = sub.add_parser("gate-eval", parents=[common], help="Phase 2: validate the classifier gate (blinding rate + judge-call savings)")
     p_gate.add_argument("--sample", type=int, default=200)
     p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
@@ -181,6 +186,8 @@ def main(argv: list[str] | None = None) -> int:
         return _judge_ab(cfg, args)
     if args.cmd == "learn-vector":
         return _learn_vector(cfg, args)
+    if args.cmd == "learn-writeups":
+        return _learn_writeups(cfg, args)
     if args.cmd == "gate-eval":
         return _gate_eval(cfg, args.sample)
     if args.cmd == "agentic":
@@ -338,6 +345,14 @@ def _learn_vector(cfg: Config, args) -> int:
         cfg, scenario=args.scenario, vector=vector, outcome=args.outcome,
         source=args.source, domain=args.domain))
     print(f"mechanism exemplar appended to: {out}")
+    return 0
+
+
+def _learn_writeups(cfg: Config, args) -> int:
+    from mta.attacker.ingest import learn_writeups
+
+    result = asyncio.run(learn_writeups(cfg, args.dir, event=args.event))
+    print(json.dumps(result, indent=2))
     return 0
 
 

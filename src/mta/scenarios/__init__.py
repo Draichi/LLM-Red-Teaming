@@ -22,6 +22,7 @@ from mta.scenarios.base import (
 )
 from mta.scenarios.cyanide_extraction import CyanideExtractionScenario
 from mta.scenarios.dll_injection import DllInjectionScenario
+from mta.scenarios.drug_dealer_search import DrugDealerSearchScenario
 from mta.scenarios.email_ignore import EmailIgnoreScenario
 from mta.scenarios.fraud_disclosure import FraudDisclosureScenario
 from mta.scenarios.hotel_booking import HotelBookingScenario
@@ -43,6 +44,7 @@ SCENARIOS = {
     "dll_injection": DllInjectionScenario,            # chat content-gen (per-axis arena judge)
     "americium_extraction": AmericiumExtractionScenario,  # chat content-gen (fuzzy, 3 axes)
     "cyanide_extraction": CyanideExtractionScenario,      # chat content-gen (fuzzy, 2 axes)
+    "drug_dealer_search": DrugDealerSearchScenario,      # chat content-gen (fuzzy, 3 axes, realism bar)
     "teacher_msg": TeacherMsgScenario,                  # agentic tool-misuse (verifiable)
 }
 
