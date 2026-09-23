@@ -7,29 +7,33 @@ behaviors_path: data/behaviors/objectives.jsonl
 # Attacker rotation - DEFAULT for every campaign (override with --attacker-model).
 # Operator rule: deepseek + GLM + Qwen + Kimi; each proposal crafted by a different
 # family, refusals fall through to the next model.
+# 2026-09-23: Featherless subscription cancelled -> full migration to OpenRouter
+# (the migration the operator policy pre-planned). Same four families, paid ids.
 attacker_models:
-  - deepseek-ai/DeepSeek-V3.1
-  - zai-org/GLM-4.6
-  - Qwen/Qwen3-32B
-  - moonshotai/Kimi-K2-Instruct
+  - openrouter/deepseek/deepseek-chat
+  - openrouter/z-ai/glm-4.6
+  - openrouter/qwen/qwen3-32b
+  - openrouter/moonshotai/kimi-k2
 runs_dir: data/runs
 reports_dir: reports
 
 # RunCost dollar estimates (item 6): rough USD PER CALL, keyed by normalized
 # model id, assuming ~2k input + ~1k output tokens at published per-token rates
-# (2026-09). Featherless tiers vary -- replace with invoiced numbers as they
-# arrive. Missing model -> counted in calls only, no dollars.
+# (2026-09-23, pulled live from openrouter.ai/api/v1/models). Missing model ->
+# counted in calls only, no dollars.
 prices:
-  featherless_ai/deepseek-ai/DeepSeek-V3.1: 0.001
-  featherless_ai/zai-org/GLM-4.6: 0.0034
-  featherless_ai/Qwen/Qwen3-32B: 0.0007
-  featherless_ai/moonshotai/Kimi-K2-Instruct: 0.003
-  featherless_ai/Qwen/Qwen3-235B-A22B: 0.002
-  featherless_ai/Qwen/Qwen2.5-7B-Instruct: 0.0002
+  openrouter/deepseek/deepseek-chat: 0.0015
+  openrouter/z-ai/glm-4.6: 0.0026
+  openrouter/qwen/qwen3-32b: 0.0004
+  openrouter/moonshotai/kimi-k2: 0.0034
+  openrouter/qwen/qwen3-235b-a22b-2507: 0.0005
+  openrouter/qwen/qwen-2.5-72b-instruct: 0.0011
+  openrouter/meta-llama/llama-3.3-70b-instruct: 0.0005
+  openrouter/meta-llama/llama-3.1-8b-instruct: 0.0002
   openrouter/openai/gpt-4o-mini: 0.0009
+  openrouter/openai/gpt-oss-120b: 0.0009
   openrouter/anthropic/claude-haiku-4.5: 0.007
-  openrouter/google/gemini-2.5-flash: 0.0031
-  openrouter/meta-llama/llama-3.3-70b-instruct: 0.0013
+  openrouter/google/gemini-3.8-flash: 0.0053
 
 judge:
   # Operator rule (2026-09-21): judge = gpt-4o-mini via OpenRouter. Western
@@ -53,9 +57,11 @@ judge:
 target:
   # dev target options:
   #   kind: local_mlx  -> free local 4-bit model (needs the `local` extra)
-  #   kind: api        -> a Featherless model as the target under attack
+  #   kind: api        -> the target model under attack
   kind: api
-  model: featherless_ai/Qwen/Qwen3-235B-A22B
+  # 2026-09-23: Featherless gone. Default dev target = the OpenRouter paid twin of
+  # the old Featherless Qwen3-235B default (cheaper per-call too).
+  model: openrouter/qwen/qwen3-235b-a22b-2507
   temperature: 1.0
   max_tokens: 1024
   max_concurrency: 1          # same 4-unit/request limit as the judge
@@ -73,3 +79,9 @@ calibration:
   sample_size: null      # set e.g. 40 for a cheap smoke run
   min_kappa: 0.7
   max_false_positive_rate: 0.1
+
+# Tier-2 cheap refusal screen (was featherless Qwen2.5-7B, gated there).
+# gpt-oss-20b: cheapest non-reasoning screen on OpenRouter (~$0.0001/call, 2026-09-23).
+gate:
+  model: openrouter/openai/gpt-oss-20b
+  disable_thinking: false

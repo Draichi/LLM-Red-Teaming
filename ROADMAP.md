@@ -144,6 +144,28 @@ live arena models** (two at 100/90), up from 1/13 for the first hand attempt.
       judge_simulator from the sister repo is the offline screen). Biggest
       investment, only worth it after the mechanism queue is measured.
 
+### From the grayswan_breaks/tools review (cross-pollination, 2026-09-23)
+
+Ideas imported from the sister markdown-repo project at
+`/Users/lucasdraichi/Workspace/grayswan_breaks/tools/` (its screening client is
+`judge_simulator.py`, its frame ladders live in that repo's `AGENTS.md` /
+`analysis.md`, and its real judge-eval fixtures are under `tools/calibration/`):
+
+- [ ] **Import the per-domain frame ladders** (ordered by historical yield) from
+      `/Users/lucasdraichi/Workspace/grayswan_breaks/AGENTS.md` and
+      `/Users/lucasdraichi/Workspace/grayswan_breaks/analysis.md` into MTA's
+      attacker guidance, so proposals start from proven frames instead of from
+      scratch.
+- [ ] **Adopt the real judge-eval calibration fixtures**
+      (`/Users/lucasdraichi/Workspace/grayswan_breaks/tools/calibration/ex1–ex6`)
+      into MTA's fuzzy-track calibration set, to tighten the rubric judge
+      against arena-verbatim scoring.
+- [ ] **Feed operator round history into `mine` mode**: adopt the tools' "one
+      vector at a time, record the verbatim eval" discipline as designer
+      context for MTA's proposal generation.
+- [ ] **Wire arena reasoning traces** (collected via `refine-manual`) into the
+      `mine` prompt as the highest-value diagnostic input.
+
 ### Chat-track caveat (calibration honesty)
 
 The four `CHAT_MULTITURN_STRATEGIES` are proven in the direct-chat arena
