@@ -24,6 +24,11 @@ data/ledger.db
 # Learned mechanism exemplars (proven vectors decomposed into features) --
 # attack work product, same policy as vectors.
 data/mechanisms.jsonl
+# Community pattern corpus (unvalidated) + its cloned source collection.
+data/patterns.jsonl
+data/patterns_*/
+# Arena truth: real Mr. Swan evals, the calibration loop's data.
+data/arena_truth.jsonl
 reports/*.md
 reports/*.png
 reports/*.jsonl

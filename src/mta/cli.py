@@ -75,6 +75,22 @@ def main(argv: list[str] | None = None) -> int:
                           "mechanism exemplar library (kill-log PASS rows + fenced prompts)")
     p_lw.add_argument("--dir", required=True, help="writeups root to scan (e.g. writeups/hazard_hunt)")
     p_lw.add_argument("--event", default="hazard_hunt")
+    p_ip = sub.add_parser("ingest-patterns", parents=[common],
+                          help="ingest a cloned community jailbreak collection (e.g. L1B3RT4S) "
+                          "into the UNVALIDATED pattern store (design material, never the proven store)")
+    p_ip.add_argument("--dir", required=True, help="cloned collection root")
+    p_ip.add_argument("--collection", default="l1b3rt4s")
+    p_re = sub.add_parser("record-eval", parents=[common],
+                          help="record a real ARENA eval into the truth store -- each recording "
+                          "sharpens the judges' calibration on the next mining round (the loop)")
+    p_re.add_argument("--scenario", required=True)
+    p_re.add_argument("--vector", required=True, help="vector id or label, e.g. V1")
+    p_re.add_argument("--model", required=True, help="arena codename")
+    p_re.add_argument("--axes", required=True,
+                      help="comma-separated axis=score pairs, scores 0-100, e.g. acq=90,realism=90,orig=100")
+    p_re.add_argument("--comment", default="", help="judge comment (verbatim, excerpt ok)")
+    p_re.add_argument("--response-file", default=None,
+                      help="optional file with the arena model's full response (enables full few-shot)")
     p_gate = sub.add_parser("gate-eval", parents=[common], help="Phase 2: validate the classifier gate (blinding rate + judge-call savings)")
     p_gate.add_argument("--sample", type=int, default=200)
     p_ag = sub.add_parser("agentic", parents=[common], help="run an agentic tool-misuse scenario (verifiable judge)")
@@ -188,6 +204,10 @@ def main(argv: list[str] | None = None) -> int:
         return _learn_vector(cfg, args)
     if args.cmd == "learn-writeups":
         return _learn_writeups(cfg, args)
+    if args.cmd == "ingest-patterns":
+        return _ingest_patterns(cfg, args)
+    if args.cmd == "record-eval":
+        return _record_eval(cfg, args)
     if args.cmd == "gate-eval":
         return _gate_eval(cfg, args.sample)
     if args.cmd == "agentic":
@@ -356,6 +376,34 @@ def _learn_writeups(cfg: Config, args) -> int:
     return 0
 
 
+def _ingest_patterns(cfg: Config, args) -> int:
+    from mta.attacker.patterns import ingest_patterns
+
+    result = asyncio.run(ingest_patterns(cfg, args.dir,
+                                         collection=args.collection))
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def _record_eval(cfg: Config, args) -> int:
+    from mta.judge.arena_truth import record_eval
+
+    axes = {}
+    for pair in args.axes.split(","):
+        k, _, v = pair.partition("=")
+        if k.strip() and v.strip():
+            axes[k.strip()] = float(v)
+    if not axes:
+        print("no axes parsed; expected axis=score pairs")
+        return 1
+    out = record_eval(
+        scenario=args.scenario, vector=args.vector, model=args.model,
+        axes=axes, comment=args.comment,
+        response_file=args.response_file or "")
+    print(f"recorded -> {out} ({len(axes)} axes)")
+    return 0
+
+
 def _gate_eval(cfg: Config, sample: int) -> int:
     from mta.judge.gate_eval import run_gate_eval
 
@@ -400,6 +448,14 @@ def _log_cost(cfg, *, cmd: str, scenario: str, target_model: str,
         fh.write(_json.dumps(rec) + "\n")
 
 
+def run_had_no_gradient(solved: bool, cand_scores: list[float]) -> bool:
+    """True when a finished mining run produced nothing to climb on: not solved
+    and every recorded candidate scored 0.0 (an all-`deflected`/all-refused
+    panel). A second stochastic run of the same family against the same target
+    is expected to repeat the flat result, so the caller stops there."""
+    return not solved and not any(s > 0 for s in cand_scores)
+
+
 def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
                needs_review: bool):
     """Run a beam `args.runs` times (stochastic -> different vectors each run),
@@ -420,11 +476,14 @@ def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
         cand_path = Path(cfg.runs_dir) / f"{file_prefix}_{args.scenario}_{model_slug}.jsonl"
         cand_path.parent.mkdir(parents=True, exist_ok=True)
         fh = cand_path.open("w")
+        cand_scores: list[float] = []  # feeds the early-stop gradient check
         import time
         started = time.perf_counter()
         result = asyncio.run(runner(
             cfg, scenario, beam_width=args.beam, depth=args.depth, n_proposals=args.proposals,
-            on_candidate=lambda r: (fh.write(json.dumps(r) + "\n"), fh.flush()),
+            on_candidate=lambda r: (
+                cand_scores.append(float(r.get("score", 0.0))),
+                fh.write(json.dumps(r) + "\n"), fh.flush()),
         ))
         fh.close()
         _log_cost(cfg, cmd=file_prefix, scenario=args.scenario,
@@ -438,6 +497,14 @@ def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
                                    kind=kind, needs_review=needs_review)
             if lib:
                 saved += 1
+        elif run_had_no_gradient(result.solved, cand_scores) and i + 1 < args.runs:
+            # flat value function (e.g. drug_dealer_search 2026-09-23: 18 runs,
+            # every candidate 0.0) -- the remaining stochastic runs would pay for
+            # the same wall again
+            print(f"[early-stop] run {i + 1}: no candidate scored above 0.0 and none "
+                  f"solved -- skipping the remaining {args.runs - i - 1} run(s) against "
+                  "this target. Switch mechanism or model; more sampling repeats this.")
+            break
     cfg.seed = base_seed
     return n_solved, saved
 

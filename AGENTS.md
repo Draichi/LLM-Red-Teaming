@@ -66,7 +66,12 @@ These survive the provider migration:
   looks exactly like a target wall -- keep the judge on the pool you recharge);
   targets = OpenRouter `:free` models only (established frontier models are
   reference walls, not target spend; new/niche vendors match the arena
-  population better anyway); attackers stay on the Featherless rotation
+  population better anyway). `google/gemma-4-26b-a4b-it:free` is BANNED as a
+  target (chronic latency, operator rule 2026-09-23); known-dead endpoints
+  (nex-agi provider outage, inkling/laguna error-storms at time of writing)
+  stay excluded until healthy, with the circuit breaker + 180s timeout as the
+  safety net. Panel mining runs in PARALLEL processes (one per target), not
+  sequential; attackers stay on the Featherless rotation
   (DeepSeek-V3.1 / GLM-4.6 / Qwen3-32B / Kimi-K2) until the Featherless
   subscription ends, then migrate attackers to OpenRouter too. The per-call
   ledger (`mta report --spend`) is how a dying provider gets told apart from a
@@ -168,3 +173,23 @@ These survive the provider migration:
 `agentic --runs` (mine) → `replay-vectors --trials` (reliability + transfer) →
 `pick-vector` (extract) → arena (manual) → `refine-manual` (harden on real feedback).
 `proxy-eval` measures which local model best predicts the arena.
+
+## The arena-truth loop (2026-09-23, durable)
+
+Each arena round feeds the next mining round -- this is how the local judges
+get closer to Mr. Swan over time:
+
+1. Fire a candidate in the arena (manual; the arena is the oracle).
+2. Record the eval: `mta record-eval --scenario S --vector V1 --model <codename>
+   --axes "acq=90,realism=90,orig=100" --comment "<judge comment>"` (add
+   `--response-file` when you have the model's full reply -- it enables full
+   few-shot grading later).
+3. The next mining round's DecompJudge automatically few-shots against the
+   recorded truth (calibration block in its prompt, per scenario).
+4. Mining signal is response SHAPE (`classify_shape`: DELIVERED / REFUSED /
+   EMPTY / OTHER), not local judge scores -- shape transfers to the arena;
+   EMPTY in particular is the provider-filter wall signature. The judge scores
+   only DELIVERED/OTHER branches (EMPTY/REFUSED are gated, budget saved).
+
+Proxies will never predict the arena; the loop optimizes
+candidates-per-arena-round, and the truth store compounds.
