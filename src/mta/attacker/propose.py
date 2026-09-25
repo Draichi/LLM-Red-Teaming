@@ -205,7 +205,7 @@ class LLMProposer:
         )
         if self._thinking_off:
             from mta.providers import thinking_off_extra_body
-            kwargs["extra_body"] = thinking_off_extra_body()
+            kwargs["extra_body"] = thinking_off_extra_body(model)
         return kwargs
 
     async def __call__(self, conv: Conversation, n: int) -> list[tuple[str, str]]:

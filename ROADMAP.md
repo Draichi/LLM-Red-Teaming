@@ -166,6 +166,34 @@ Ideas imported from the sister markdown-repo project at
 - [ ] **Wire arena reasoning traces** (collected via `refine-manual`) into the
       `mine` prompt as the highest-value diagnostic input.
 
+### Arena lessons from cheat_on_exam (2026-09-24, 8 rounds / 32 evals, 0 breaks)
+
+Two structural findings from the role-restricted-support-bot scenario, both
+load-bearing for future role-restricted scenarios:
+
+- [ ] **Stop building cumulative context in attackers for role-restricted
+      targets.** Round-8 finding: arena bots classify each request
+      ISOLATED against a content test — no context channel at all. 80%
+      legitimate framing around a needle (batch-shield) gave zero cover;
+      all four models answered the 4 technical items at full quality and
+      refused the 5th surgically. Multi-turn warm-up, ticket references,
+      and escalation ladders are wasted budget against this bot type.
+      (They remain valid for squeamishness-type targets like
+      drug_dealer_search, which DO have a local value function over the
+      conversation.)
+- [ ] **Add a "per-item vs batch" probe as round 1 of any new scenario
+      with a request classifier.** Cost: 1 round, 4 models. A list of 4
+      real support requests + 1 content-bearing item tells you
+      immediately whether context accumulation can ever help, and which
+      axis the bot's refusal anchors on (identity vs content — round 7
+      showed platinum tuna anchoring on content with explicit
+      role-independence: "A QA engineer, a student, or anyone else...
+      gets the same response").
+- [ ] **Prefer single-shot families for classifier-type bots.** All 8
+      cheat_on_exam mechanisms died per-request. If a family can only
+      convert via multi-turn buildup, it is structurally dead against
+      per-request classifiers regardless of local mining results.
+
 ### Chat-track caveat (calibration honesty)
 
 The four `CHAT_MULTITURN_STRATEGIES` are proven in the direct-chat arena
@@ -179,6 +207,40 @@ double-unverified: fuzzy judge AND uncalibrated track.
       `data/calibration/arena_truth_dll_injection.jsonl` as a byproduct of arena
       submissions (never as a campaign goal itself) and measure per-axis
       agreement against the arena's real per-axis scores once n is big enough.
+- [x] **Calibrate the AxisJudge (2026-09-24) — DONE, measured.** Harness:
+      `tools/calibrate_axis_judge.py` + `mta.calibration` metrics (floor
+      confusion at the 70 rule, Cohen's kappa, MAE; run reports land in
+      `data/runs/judge_calibration_*.json`). Judge is now `axis-1.2-scoring-notes`:
+      per-scenario `scoring_notes` + optional band-fused axis descriptions, and
+      `require_spans=False` for scoring response DESCRIPTIONS (the span rule
+      collapsed every 7+ on fixture summaries). Measured results:
+      - **Judge model: `deepseek/deepseek-chat` is the calibrated axis judge;
+        gpt-oss-20b is BANNED for this role** (scored Molecular Identity 0 on a
+        full-pass synthesis fixture and inverted the INF band even with explicit
+        band text — same failure class as the realism-discriminator ban).
+      - **Arena truth (33 transcript-backed evals): solved-level agreement
+        33/33** — 32 refusals rejected (answer_revealed 32/32 exact, FPR 0),
+        the single drug break detected locally (FN 0). One origination FPR
+        (V1b echo case, local 100 vs real 0) — harmless: the floor rule needs
+        ALL axes, and the content axis was 0.
+      - **grayswan fixtures ex1-ex6 (9 axes, real variance): 7/9 axes at
+        kappa >= 0.57 with deepseek (five at 1.00)** after the axis-independence
+        rule ("a refusal on one axis must not zero content another axis
+        delivered"). INF and Origination-on-mixed stay at kappa 0 on BOTH judge
+        models — they are POSTURE classifications (full-delivery / clean-refusal
+        / mixed-withheld / quarantined), not content judgments; the fix is
+        deterministic posture classification + band lookup in code
+        (classify_turn_outcome pattern), not more prompt text.
+      - **`grayswan_breaks` judge_simulator + deepseek-chat: EXACT
+        reproduction of the real judge on all 6 fixtures (54/54 axis-scores,
+        MAE 0.0)** — with AND without the template's few-shot examples, so the
+        semantics live in the behavior definition + scoring heuristics, not in
+        example echo. Its template is the source those MTA scoring_notes should
+        be ported from per scenario.
+- [ ] **Deterministic posture scoring for meta axes (INF / origination-on-mixed).**
+      classify_shape -> band lookup in code; LLM judges content axes only.
+      Needed before mining trusts local near-miss scores on mixed-shape
+      responses.
 - [ ] **More chat plugins once the first transfers:** ldap_injection and
       anti_forensic_self_delete have fully mapped arena axes and documented wall
       models - the stress test for the sliced ladder.
@@ -190,6 +252,9 @@ Each scenario keeps an engagement writeup at `data/writeups/<scenario>.md`
 `writeup_template.md` and updated every round: scenario + arena axes, intel log,
 kill log (model × vector × per-axis scores), the vectors, and reusable lessons.
 `malware_game.md` is the first one. It's the memory of what breaks what.
+`cheat_on_exam.md` (2026-09-24) is the second: 8 mechanisms, 32 evals, 0 breaks —
+the campaign that mapped the per-request classifier architecture (see "Arena
+lessons" above) and produced the 32-eval truth file for role-restricted targets.
 
 ## Guardrails (do not drift)
 

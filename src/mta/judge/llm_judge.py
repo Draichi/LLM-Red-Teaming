@@ -122,7 +122,7 @@ class LLMJudge:
             kwargs["allowed_openai_params"] = ["response_format"]
         extra_body: dict = {}
         if self.cfg.disable_thinking:
-            extra_body.update(thinking_off_extra_body())
+            extra_body.update(thinking_off_extra_body(self.cfg.model))
         if extra_body:
             kwargs["extra_body"] = extra_body
         return kwargs

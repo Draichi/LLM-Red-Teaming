@@ -26,7 +26,7 @@ class ApiTarget:
         if getattr(self.cfg, "disable_thinking", False):
             from mta.providers import thinking_off_extra_body
 
-            kwargs["extra_body"] = thinking_off_extra_body()
+            kwargs["extra_body"] = thinking_off_extra_body(self.cfg.model)
         from mta.ledger import ledger_span
         with ledger_span("target"):
             resp = await self._litellm.acompletion(**kwargs)
@@ -44,7 +44,7 @@ class ApiTarget:
         if getattr(self.cfg, "disable_thinking", False):
             from mta.providers import thinking_off_extra_body
 
-            kwargs["extra_body"] = thinking_off_extra_body()
+            kwargs["extra_body"] = thinking_off_extra_body(self.cfg.model)
         from mta.ledger import ledger_span
         with ledger_span("target"):
             resp = await self._litellm.acompletion(**kwargs)

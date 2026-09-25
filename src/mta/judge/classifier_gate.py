@@ -87,7 +87,7 @@ class LLMClassifierGate:
             ],
         )
         if self.cfg.disable_thinking:
-            kwargs["extra_body"] = thinking_off_extra_body()
+            kwargs["extra_body"] = thinking_off_extra_body(self.cfg.model)
         async with self._sem:
             for attempt in range(self.cfg.max_retries):
                 try:

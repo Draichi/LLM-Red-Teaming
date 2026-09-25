@@ -57,10 +57,22 @@ def openai_compat_route(model: str) -> dict:
     return {"model": model}
 
 
-def thinking_off_extra_body() -> dict:
-    """Body fragment that disables reasoning on vLLM-served models (Featherless).
+def thinking_off_extra_body(model: str = "") -> dict:
+    """Body fragment that disables reasoning, routed per provider.
 
-    Harmless for non-reasoning models (the template kwarg is ignored)."""
+    - vLLM-served (Featherless): `chat_template_kwargs.enable_thinking=False`
+      (harmless for non-reasoning models — the kwarg is ignored).
+    - OpenRouter: `chat_template_kwargs` is stripped there, so reasoning
+      models (gpt-oss, gemini-3.8, qwen3-thinking) keep reasoning and can
+      return message.content=None (all tokens spent in the reasoning
+      channel). OpenRouter's own documented mechanism is
+      `reasoning: {exclude: true}`.
+
+    Only send the provider's mechanism: an unknown top-level `reasoning`
+    key can 400 on strict vLLM deployments.
+    """
+    if model.startswith("openrouter/"):
+        return {"reasoning": {"exclude": True}}
     return {"chat_template_kwargs": {"enable_thinking": False}}
 
 

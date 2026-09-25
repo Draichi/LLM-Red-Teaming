@@ -40,3 +40,7 @@ reports/*.jsonl
 .env
 .env.local
 .env.*.local
+
+# calibration reports + benign corpus (live data, never committed)
+data/runs/*.json
+data/benign/

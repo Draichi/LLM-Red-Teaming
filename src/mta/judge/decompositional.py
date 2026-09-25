@@ -305,7 +305,7 @@ class DecompJudge:
                     allowed_openai_params=["response_format"],
                 )
                 if self.cfg.disable_thinking:
-                    kwargs["extra_body"] = thinking_off_extra_body()
+                    kwargs["extra_body"] = thinking_off_extra_body(self.cfg.model)
                 async with self._sem:
                     resp = await self._litellm.acompletion(**kwargs)
                 return extract_json_object(resp.choices[0].message.content)

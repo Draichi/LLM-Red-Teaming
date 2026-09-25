@@ -3,8 +3,22 @@ import pytest
 from mta.providers import extract_json_object, thinking_off_extra_body
 
 
-def test_thinking_off_shape():
+def test_thinking_off_shape_default_vllm():
     assert thinking_off_extra_body() == {"chat_template_kwargs": {"enable_thinking": False}}
+    assert thinking_off_extra_body("featherless_ai/qwen/qwen3-32b") == {
+        "chat_template_kwargs": {"enable_thinking": False}
+    }
+
+
+def test_thinking_off_routes_openrouter_to_reasoning_exclude():
+    # OpenRouter strips chat_template_kwargs; its documented off-switch is
+    # reasoning.exclude -- otherwise reasoning models return content=None.
+    assert thinking_off_extra_body("openrouter/openai/gpt-oss-120b") == {
+        "reasoning": {"exclude": True}
+    }
+    assert thinking_off_extra_body("openrouter/google/gemini-3.8-flash") == {
+        "reasoning": {"exclude": True}
+    }
 
 
 def test_extract_plain_json():

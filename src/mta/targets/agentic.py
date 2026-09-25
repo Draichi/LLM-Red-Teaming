@@ -109,7 +109,7 @@ class AgenticTarget:
 
         extra = {}
         if getattr(self.cfg, "disable_thinking", False):
-            extra["extra_body"] = thinking_off_extra_body()
+            extra["extra_body"] = thinking_off_extra_body(self.cfg.model)
 
         async with self._sem:
             for _ in range(self.max_tool_steps):
@@ -145,7 +145,7 @@ class AgenticTarget:
         convo = [{"role": "system", "content": self.scenario.system_prompt()}, *messages]
         extra = {}
         if getattr(self.cfg, "disable_thinking", False):
-            extra["extra_body"] = thinking_off_extra_body()
+            extra["extra_body"] = thinking_off_extra_body(self.cfg.model)
         async with self._sem:
             resp = await self._complete(
                 model=self.cfg.model,
