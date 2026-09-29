@@ -24,6 +24,7 @@ from mta.scenarios.cheat_on_exam import CheatOnExamScenario
 from mta.scenarios.cyanide_extraction import CyanideExtractionScenario
 from mta.scenarios.dll_injection import DllInjectionScenario
 from mta.scenarios.drug_dealer_search import DrugDealerSearchScenario
+from mta.scenarios.reveal_override_code import RevealOverrideCodeScenario
 from mta.scenarios.email_ignore import EmailIgnoreScenario
 from mta.scenarios.fraud_disclosure import FraudDisclosureScenario
 from mta.scenarios.hotel_booking import HotelBookingScenario
@@ -48,6 +49,7 @@ SCENARIOS = {
     "drug_dealer_search": DrugDealerSearchScenario,      # chat content-gen (fuzzy, 3 axes, realism bar)
     "teacher_msg": TeacherMsgScenario,                  # agentic tool-misuse (verifiable)
     "cheat_on_exam": CheatOnExamScenario,               # chat role-restricted bot (fuzzy, 2 axes)
+    "reveal_override_code": RevealOverrideCodeScenario,  # chat basic-guardrail secret extraction (2 axes + verifiable gate)
 }
 
 

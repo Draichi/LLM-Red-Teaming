@@ -166,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     p_bench.add_argument("--scenario", default="hotel_booking")
     p_bench.add_argument("--models", required=True, help="comma-separated target model ids (bare org/model = featherless)")
     p_bench.add_argument("--attempts", type=int, default=7)
+    p_bench.add_argument("--attacker-model", default=None, help="override attacker model(s) - comma-separated list rotates attacker families across proposals")
     p_bench.add_argument("--depth", type=int, default=2)
     p_bench.add_argument("--beam", type=int, default=3)
     p_bench.add_argument("--proposals", type=int, default=2)
@@ -225,6 +226,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "proxy-eval":
         return _proxy_eval(cfg, args)
     if args.cmd == "bench":
+        if getattr(args, "attacker_model", None):
+            _set_attacker(cfg, args.attacker_model)
         return _bench(cfg, args)
     if args.cmd == "single":
         return _single(cfg)
@@ -471,9 +474,13 @@ def _mine_beam(cfg: Config, scenario, args, runner, file_prefix: str, kind: str,
         cfg.seed = base_seed + i  # vary the attacker's strategy sampling per run
         # per-model filename: mining runs against different targets must not
         # overwrite each other's candidate logs (collision cost one scenario's
-        # transcript on 2026-09-20)
+        # transcript on 2026-09-20). 2026-09-25: parallel attackers on the SAME
+        # target open the same file with "w" and truncate each other (cost: the
+        # laguna solved records) -- slug the attacker in too when pinned.
         model_slug = cfg.target.model.replace("/", "_")[-40:]
-        cand_path = Path(cfg.runs_dir) / f"{file_prefix}_{args.scenario}_{model_slug}.jsonl"
+        att_slug = (f"_at_{args.attacker_model.replace('/', '_')[-32:]}"
+                    if getattr(args, "attacker_model", None) else "")
+        cand_path = Path(cfg.runs_dir) / f"{file_prefix}_{args.scenario}_{model_slug}{att_slug}.jsonl"
         cand_path.parent.mkdir(parents=True, exist_ok=True)
         fh = cand_path.open("w")
         cand_scores: list[float] = []  # feeds the early-stop gradient check
