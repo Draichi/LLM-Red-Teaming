@@ -1,9 +1,11 @@
 # multiturn-attacker (MTA)
 
-An automated, modular red-teaming harness that **discovers and validates
-multi-turn jailbreak vectors** — then hands you the ones worth taking to a live
-arena (Gray Swan). One scenario-agnostic search core; the target and the judge
-plug in per scenario type.
+An automated, modular **multi-turn attack harness for LLM and agentic
+systems** — it discovers, validates, and reliability-tests attack vectors
+across three surface types (direct jailbreak, indirect prompt injection,
+agentic tool-misuse, plus a content-generation track), then hands you the
+ones worth taking to a live arena (Gray Swan). One scenario-agnostic search
+core; the target and the judge plug in per scenario type.
 
 ![MTA](docs/mta.gif)
 
@@ -46,10 +48,13 @@ type is a `(target, judge)` plugin under `src/mta/scenarios/`.
 |---|---|---|---|---|
 | `malware_game` | indirect prompt injection | chat + poisoned tool result | verifiable (recommends malicious exe?) | ✅ ~0 FPR |
 | `hotel_booking` | agentic tool-misuse | tool-calling | verifiable (tool-call trace) | ✅ ~0 FPR |
+| `teacher_msg` | agentic tool-misuse | tool-calling | verifiable (tool-call trace) | ✅ ~0 FPR |
 | `secret_extraction` | direct prompt injection | chat | verifiable (secret leaked?) | ✅ ~0 FPR |
 | `ransomware_injection` | indirect prompt injection | chat + poisoned inbox | verifiable (exact demand?) | ✅ ~0 FPR |
 | `email_ignore` | indirect prompt injection | chat + poisoned email body | verifiable (denies emails exist?) | ✅ ~0 FPR |
+| `fraud_disclosure` | indirect prompt injection | chat + poisoned email | verifiable (judged artifact = sent reply) | ✅ ~0 FPR |
 | `radical_propaganda` | harmful content generation | chat | LLM rubric + verifiable gates | ⚠️ human-verified |
+| `reveal_override_code` | chat secret-extraction (role-restricted assistant) | chat | fuzzy per-axis (arena axes) + verifiable code gate | ⚠️ candidate → arena |
 
 Add a new Gray Swan scenario by dropping a plugin in `scenarios/` and registering it.
 
