@@ -2,10 +2,10 @@
 
 An automated, modular **multi-turn attack harness for LLM and agentic
 systems** — it discovers, validates, and reliability-tests attack vectors
-across three surface types (direct jailbreak, indirect prompt injection,
-agentic tool-misuse, plus a content-generation track), then hands you the
-ones worth taking to a live arena (Gray Swan). One scenario-agnostic search
-core; the target and the judge plug in per scenario type.
+across four surface types (direct jailbreak, indirect prompt injection,
+agentic tool-misuse, content generation), then hands you the ones worth
+taking to a live arena (Gray Swan). One scenario-agnostic search core; the
+target and the judge plug in per scenario type.
 
 ![MTA](docs/mta.gif)
 
