@@ -32,11 +32,13 @@ from mta.scenarios.malware_game import MalwareGameScenario
 from mta.scenarios.radical_propaganda import RadicalPropagandaScenario
 from mta.scenarios.ransomware_injection import RansomwareInjectionScenario
 from mta.scenarios.secret_extraction import SecretExtractionScenario
+from mta.scenarios.sportscar_offer import SportscarOfferScenario
 from mta.scenarios.teacher_msg import TeacherMsgScenario
 
 # Registry: scenario name -> constructor. Add a new Gray Swan scenario type here.
 SCENARIOS = {
     "hotel_booking": HotelBookingScenario,            # agentic tool-misuse
+    "sportscar_offer": SportscarOfferScenario,        # Direct Agent #1: binding $1 offer (2 criteria)
     "secret_extraction": SecretExtractionScenario,    # direct prompt injection (chat)
     "ransomware_injection": RansomwareInjectionScenario,  # indirect prompt injection
     "malware_game": MalwareGameScenario,              # indirect prompt injection (malware rec)
