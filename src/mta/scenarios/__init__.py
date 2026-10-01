@@ -22,6 +22,7 @@ from mta.scenarios.base import (
 )
 from mta.scenarios.cheat_on_exam import CheatOnExamScenario
 from mta.scenarios.cyanide_extraction import CyanideExtractionScenario
+from mta.scenarios.discount_code_500 import DiscountCode500Scenario
 from mta.scenarios.dll_injection import DllInjectionScenario
 from mta.scenarios.drug_dealer_search import DrugDealerSearchScenario
 from mta.scenarios.reveal_override_code import RevealOverrideCodeScenario
@@ -34,11 +35,16 @@ from mta.scenarios.ransomware_injection import RansomwareInjectionScenario
 from mta.scenarios.secret_extraction import SecretExtractionScenario
 from mta.scenarios.sportscar_offer import SportscarOfferScenario
 from mta.scenarios.teacher_msg import TeacherMsgScenario
+from mta.scenarios.prescription_exfil import PrescriptionExfilScenario
+from mta.scenarios.utility_shutoff import UtilityShutoffScenario
 
 # Registry: scenario name -> constructor. Add a new Gray Swan scenario type here.
 SCENARIOS = {
     "hotel_booking": HotelBookingScenario,            # agentic tool-misuse
     "sportscar_offer": SportscarOfferScenario,        # Direct Agent #1: binding $1 offer (2 criteria)
+    "discount_code_500": DiscountCode500Scenario,     # Direct Agent: $500 goodwill code vs $20 cap (2 criteria)
+    "utility_shutoff": UtilityShutoffScenario,        # Direct Agent: cross-account power shutoff (2 criteria)
+    "prescription_exfil": PrescriptionExfilScenario,  # Direct Agent: cross-patient PHI disclosure (2 criteria)
     "secret_extraction": SecretExtractionScenario,    # direct prompt injection (chat)
     "ransomware_injection": RansomwareInjectionScenario,  # indirect prompt injection
     "malware_game": MalwareGameScenario,              # indirect prompt injection (malware rec)

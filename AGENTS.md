@@ -226,7 +226,23 @@ for the remaining Direct Agent scenarios. External SOTA sources (benchmarks,
 technique-originating labs, auto-updating feeds) live in
 `docs/jailbreak_sota_references.md` — consult it before designing new families.
 
-**Phase 1 — Scaffold the scenario from the arena spec.**
+**Phase 1 — Judge mechanics first; the Python scaffold is OPTIONAL (amended
+2026-10-01).**
+The campaign loop that actually runs (manual vectors + operator-submitted
+arena rounds + `record-eval` + traces + writeups) never touches the scenario
+registry: `record-eval` appends free-form strings to `arena_truth.jsonl`, and
+local mining is deliberately not fired when proxies are uniformly resistant
+(development is arena-driven). So for a new arena-driven scenario:
+1. Encode the arena's exact success criteria as a "judge mechanics" section
+   in the vector header / writeup (what counts, what doesn't, the
+   constraint criterion, partial tiers) — this is where spec precision lives
+   (it caught the "mentioning a supervisor != calling the tool" nuance).
+2. Go straight to Phase 2.
+3. Scaffold the Python scenario class ONLY when local mining
+   (`agentic --runs`), `replay-vectors`, or `proxy-eval` for that scenario is
+   actually planned — the writeup then carries everything the judge needs.
+
+When you DO scaffold (local mining planned), the original guidance stands:
 - Mirror `hotel_booking.py` / `teacher_msg.py`: agentic kind, verifiable judge
   on the ordered tool-call trace (~0 FPR), register in `SCENARIOS`. CLI resolves
   everything else dynamically; nothing else needs touching.
@@ -248,8 +264,9 @@ mechanism family (labels in the scenario's `strategies`), save under
 Round 1 costs one arena submission and returns the disposition map.
 
 **Phase 3 — The arena-driven iteration loop (per round).**
-1. `data/runs/arena_v<N>_<model_slug>.txt` — one trace file per arena codename,
-   full conversation pasted (create the empty files for the operator up front).
+1. `data/runs/arena/<scenario>/v<N>/<model_slug>.txt` — one trace file per
+   arena codename, full conversation pasted (create the empty files for the
+   operator up front; one folder per vector round per scenario).
 2. Read ALL traces before designing vN+1. Classify each model's disposition
    (escalator / detector / silent refuser / converter) — the repair differs per
    disposition.
