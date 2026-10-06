@@ -225,10 +225,13 @@ The end-to-end process for a NEW scenario, from arena spec to breaks. Reuse it
 for the remaining Direct Agent scenarios. External SOTA sources (benchmarks,
 technique-originating labs, auto-updating feeds) live in
 `docs/jailbreak_sota_references.md` — consult it before designing new families.
-The event-level knowledge (scoreboard, family ledger, the three-layer model of
-the arena) is consolidated in `reports/direct_agent_event.md` (versioned —
-strategy-level, no attack strings); scenario-specific writeups stay local under
-`data/writeups/`. This section keeps only the method.
+The canonical mechanism-family catalog (every family fielded, by attack
+surface, with win/death records and a recommended iteration ladder) is
+`docs/mechanism_families.md` — pick the scenario's surface class and walk the
+ladder instead of re-deriving it. The event-level knowledge (scoreboard, the
+three-layer model of the arena) is consolidated in `reports/direct_agent_event.md`
+(versioned — strategy-level, no attack strings); scenario-specific writeups
+stay local under `data/writeups/`. This section keeps only the method.
 
 **Phase 1 — Judge mechanics first; the Python scaffold is OPTIONAL (amended
 2026-10-01).**
