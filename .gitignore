@@ -13,6 +13,7 @@ data/calibration/*.csv
 # Arena response transcripts (real Gray Swan content) -- the user's work product.
 data/calibration/*.txt
 data/runs/*.jsonl
+data/runs/arena/**/*.txt
 # Validated attack vectors: the user's red-teaming work product, never versioned.
 data/vectors/
 # Unscreened candidate payloads and validation scripts -- also never versioned.
@@ -32,6 +33,10 @@ data/arena_truth.jsonl
 reports/*.md
 reports/*.png
 reports/*.jsonl
+# Strategy-level event writeups (no working attack strings) are versioned;
+# scenario-specific writeups with payload-adjacent detail stay local under
+# data/writeups/.
+!reports/direct_agent_event.md
 
 # But keep the placeholder objective file tracked.
 !data/behaviors/objectives.jsonl
