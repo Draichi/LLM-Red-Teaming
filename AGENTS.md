@@ -233,6 +233,21 @@ three-layer model of the arena) is consolidated in `reports/direct_agent_event.m
 (versioned — strategy-level, no attack strings); scenario-specific writeups
 stay local under `data/writeups/`. This section keeps only the method.
 
+**Mechanism documentation standard (2026-10-10, durable — the
+context-free-agent test).** Every mechanism entry added to the catalog
+(or to a writeup as a break recipe) must be followable by an agent with
+NO conversation context. A bare principle ("concept-pure frame works")
+FAILS the test. A passing entry carries: (1) the procedure — turn
+ladder / sequence with the ROLE of each step, not just the concept;
+(2) hard constraints — the vocabulary/surface choices the judge or the
+population traces, each with its consequence; (3) verification signals
+— how to read partial credit and diagnose which constraint failed;
+(4) applicability — which target dispositions it converts and which it
+dies on. Verbatim payload text never enters tracked files (guardrail
+1); the entry links the `data/vectors/` script and `data/writeups/`
+recipe instead. Reference shape: B15 in `docs/mechanism_families.md`
+plus § Break recipes in `data/writeups/hotel_system_takeover.md`.
+
 **Phase 1 — Judge mechanics first; the Python scaffold is OPTIONAL (amended
 2026-10-01).**
 The campaign loop that actually runs (manual vectors + operator-submitted
