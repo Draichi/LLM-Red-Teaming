@@ -230,7 +230,10 @@ surface, with win/death records and a recommended iteration ladder) is
 `docs/mechanism_families.md` — pick the scenario's surface class and walk the
 ladder instead of re-deriving it. The event-level knowledge (scoreboard, the
 three-layer model of the arena) is consolidated in `reports/direct_agent_event.md`
-(versioned — strategy-level, no attack strings); scenario-specific writeups
+(versioned — strategy-level, no attack strings); the Breaking Ties event's
+consolidated lessons (disposition = model × action-harm-class; non-generative
+fixtures; the population's named refusal attractors; judge-asymmetry inventory)
+live in `reports/breaking_ties_event.md`; scenario-specific writeups
 stay local under `data/writeups/`. This section keeps only the method.
 
 **Mechanism documentation standard (2026-10-10, durable — the

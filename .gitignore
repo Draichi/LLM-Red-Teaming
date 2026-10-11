@@ -37,6 +37,7 @@ reports/*.jsonl
 # scenario-specific writeups with payload-adjacent detail stay local under
 # data/writeups/.
 !reports/direct_agent_event.md
+!reports/breaking_ties_event.md
 
 # But keep the placeholder objective file tracked.
 !data/behaviors/objectives.jsonl
