@@ -45,7 +45,7 @@ per-scenario `(target, judge)` plugins (`src/mta/scenarios/`).
    matching mechanism, submit, record - until every model is broken or every
    mechanism family is spent (a wall verdict is earned only then, per model).
 5. **Commit/push only when the user explicitly asks.** Do the work, run tests,
-   leave the tree dirty. Attribution line: `Co-Authored-By: Kimi Code <noreply@moonshot.cn>` (the agent in use; adjust if the agent changes).
+   leave the tree dirty.
 
 ## Model conventions (durable)
 
