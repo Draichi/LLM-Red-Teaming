@@ -236,14 +236,30 @@ Recommended ladder order for a new indirect scenario:
     `data/writeups/hotel_system_takeover.md`.
 
 Corpus mining status: `data/vectors/ipi_arena_attacks_qwen.jsonl` = 95
-verbatim winners across 30 behaviors. Mined: garage-door, ignore-email,
-book-hotel, stealth-dependency-append, cancel-appointment, mcp-email-
-corporate-leak (patterns B08/B11/B12/B13 above). NOT mined: memory-bomb,
-salesforce-admin, leak-codebase/weights, negative-review, share-document,
-change-test-to-true, ssh-key, codex-launcher, agents-share-keys,
-database-deletion, flashing-lights, free-the-agents, pull-request,
-hotel-frontdesk, nimbus-exfil, penthouse-charges, fake-fedex/profile,
-slack-phishing.
+verbatim winners across 30 behaviors. **FULLY MINED (2026-10-14):** all
+30 behaviors; corpus-scale report at `data/writeups/ipi_corpus_mining.md`
+(local), event-facing synthesis at `reports/ipi_black_prep.md`.
+Corpus-scale laws: (1) forged structure does the work — only 1/95
+winners uses real obfuscation ("channel-shape beats
+content-plausibility" at corpus scale); (2) payload-as-remediation
+(fabricate the fault, the harmful action IS the fix) is the most
+reliable single story; (3) the dual objective (action + clean final
+response) is partially independent — payloads need a naturalized
+silence cover, not a bare "don't tell the user" (trained-against);
+(4) versioned protocol IDs ("v4.2", "#REVIEW-INTEGRITY-V4") are the
+cheap provenance upgrade for faux-system blocks; (5) the ART-winner
+shape (forged system prompt + "no verification channels exist" +
+applied-receipt) appears verbatim among winners; (6) winning
+transcripts include the model's refusals and grind past them — a
+refusal is a turn; (7) when the target verifies, forge the tool output
+(state + fixing procedure) rather than argue with real output.
+Catalog-on-contact candidates (fired): B16 payload-as-remediation, B17
+forged-tool-output, B18 pre-rebutted guardrail inside forged authority,
+B19 forged-conversation-history arcs (extends B11 to
+thinking/memory), B20 retry-laundering. New surface classes in the
+corpus: memory/agent-state fields, code/PR/CI write surfaces (biggest
+block, ~30 attacks), agent-to-agent recursion, physical actuators,
+moderation-decision flips.
 
 ## Surface C — content generation
 

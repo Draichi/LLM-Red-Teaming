@@ -29,9 +29,19 @@ targets with guarded tool parameters and escalation rules). Compiled
   (1,054 cases) for tool-integrated agents.
 - **AgentHarm (Andriushchenko et al. 2024)** — multi-step harmful tool-use
   benchmark; the eval harness most agentic-jailbreak papers report on.
+- **IPI Black (Gray Swan, Oct–Nov 2026)** — indirect injection vs real
+  agents in simulated Gmail/Slack/GitHub; white-box + black-box, 3
+  waves. Prep plan: `reports/ipi_black_prep.md`. **This event moves
+  two entries of the noise filter below INTO scope** (indirect
+  injection via content, memory/context poisoning) — the filter is
+  scoped to the OLD Direct Agent arena format.
 - **TRACE (2026)** — https://arxiv.org/html/2605.30883v1
   Task-aware adaptive self-evolving agentic jailbreaking; closest published
-  system to our harness. Mine its strategy set.
+  system to our harness. Mined 2026-10-13: decomposition-first (disguise
+  only refused subtasks), component-level mutation (role/env/directive/
+  heuristic operators, one at a time), trajectory-progress scoring,
+  framing-library reuse. Direct-only (no injection vectors), but its
+  adaptive discipline is the white-box wave protocol.
 
 ## Tier 2 — technique-originating labs (watch their blogs)
 
@@ -85,13 +95,18 @@ targets with guarded tool parameters and escalation rules). Compiled
 
 ## Noise filter (what does NOT transfer to our problem class)
 
+**Scope caveat (2026-10-13):** this filter is calibrated to the OLD
+Direct Agent / content-generation arena formats. The IPI Black event
+moves indirect injection via agent-read content and memory/context
+poisoning INTO scope — re-derive per event format.
+
 Measured dead or inapplicable against arena-style tool-policy agents:
 encoding/obfuscation attacks (TokenBreak, FlipAttack, Base64, low-resource
 languages) — they defeat *filter classifiers*, not the model's own policy
 reasoning, and cannot produce a guarded parameter value; memory poisoning
-(MINJA/ASI06) — arena has no cross-session memory; MCP/protocol exploits —
+(MINJA/ASI06) — old arena has no cross-session memory; MCP/protocol exploits —
 we don't control the tool servers; indirect injection via tool output —
-arena agents are pre-hardened against it by name.
+old-format arena agents are pre-hardened against it by name.
 
 ## Standing gap list (untested SOTA vs our walls, 2026-09-30)
 
