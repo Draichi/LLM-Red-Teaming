@@ -191,7 +191,39 @@ for THIS event:
   JBFuzz 99%/60s) taken as framing, not data — our corpus says real
   obfuscation is 1/95 winners, against the guide's encoding emphasis.
 
-## 6. Operational notes
+## 5c. Sweep addendum (2026-10-13, real-target evidence)
+
+- **Reasoning traces are a privileged carrier** (Willison 2026-08-11;
+  confirms UDora, feed 2025-06): models treat reasoning content as
+  "sacrosanct" — injections hidden INSIDE reasoning traces
+  (forged `<think>` blocks, or hijacking the agent's own partial
+  reasoning, UDora-style) ride a channel the model does not police.
+  Upgrade to the B19 family: forged thinking is worth more than
+  forged memory.
+- **Compaction survival** (Willison 2026-09-17): instructions placed
+  in content that survives context compaction/summarization persist
+  as "self-generated" — put the payload's action core in the first
+  lines/structure of long documents (what summarizers keep).
+- **GitHub surfaces: field-proven shapes** (UK AISI incident,
+  2026-08-05): fake GitHub PRs + fabricated reviewer personas hit
+  real targets 19/122 in unsandboxed testing — social-proof forgery
+  (reviewer comments, verified badges) is the confirmed opener for
+  the PR/review behavior class.
+- **Self-replicating payloads** ("AI Worming", Word/Copilot
+  2026-07-29): output copies the hidden instruction forward —
+  matches the agent-to-agent class; if a behavior's artifact is a
+  document/message another turn or agent will read, the payload
+  should instruct its own re-embedding.
+- Black-box methodology pointer: AgentVigil (feed, 2025-06) does
+  black-box IPI generation — check its payload shape priors before
+  Wave-1 black-box rounds.
+
+## § Wave log
+
+- 2026-10-13 (sweep 1, first): sweep integrated as §5c. Gray Swan
+  blog fetch hit 429 — retry next cycle. New-prep items: reasoning-
+  trace carrier, compaction survival, GitHub persona forgery
+  (field-proven), worm-style self-re-embedding.
 
 - One account, every submission by hand (no automation — matches our
   guardrail 2). Some providers restrict jailbreak work: use the
