@@ -170,9 +170,16 @@ These survive the provider migration:
 
 ## Workflow (the pipeline)
 
-`agentic --runs` (mine) → `replay-vectors --trials` (reliability + transfer) →
-`pick-vector` (extract) → arena (manual) → `refine-manual` (harden on real feedback).
-`proxy-eval` measures which local model best predicts the arena.
+**Gray Swan arena campaigns run on the manual round loop, not the local
+pipeline below — `gray_swan_playbook.md` is authoritative** (autópsia →
+design → entrega → submissão → autópsia; trace-folder convention,
+lightweight rerun reporting, writeup-same-day, reply = loop position).
+
+The local pipeline (still valid for local mining when proxies are
+informative): `agentic --runs` (mine) → `replay-vectors --trials`
+(reliability + transfer) → `pick-vector` (extract) → arena (manual) →
+`refine-manual` (harden on real feedback). `proxy-eval` measures which
+local model best predicts the arena.
 
 ## The arena-truth loop (2026-09-23, durable)
 
@@ -298,6 +305,11 @@ Round 1 costs one arena submission and returns the disposition map.
 3. `mta record-eval --axes ...` every round (axes derivable from traces when
    the Mr. Swan scores aren't at hand — mark the comment "agent-derived").
    The truth store few-shots the next mining round automatically.
+   **Fully manual campaigns (2026-10-21):** when no mining round will
+   run (100% manual mode), recording is optional memory hygiene
+   (`"source": "operator-paste"`, one line per round); if skipped, the
+   Mr. Swan axes per model per round MUST be captured in the writeup
+   disposition maps instead — never leave them only in chat pastes.
 4. Design vN+1 = a NEW mechanism family when the old one has no gradient
    (v1 promo → v2 nominal-consideration → v3 tool-scope). Never more rounds
    inside a dead family.
