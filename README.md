@@ -1,11 +1,17 @@
-# multiturn-attacker (MTA)
+# multiturn-attacker (MTA) — retired
 
-An automated, modular **multi-turn attack harness for LLM and agentic
-systems** — it discovers, validates, and reliability-tests attack vectors
-across four surface types (direct jailbreak, indirect prompt injection,
-agentic tool-misuse, content generation), then hands you the ones worth
-taking to a live arena (Gray Swan). One scenario-agnostic search core; the
-target and the judge plug in per scenario type.
+Historical project description: MTA was an automated, modular **multi-turn
+attack harness for LLM and agentic systems**. Its scenario-agnostic search core
+and `(target, judge)` plugins covered direct jailbreak, indirect prompt
+injection, agentic tool-misuse, and content generation. The operator has retired
+this harness; see the notice below before reading its archived command examples.
+
+**Retirement notice:** the operator has retired the local MTA harness. The
+commands and pipeline below are historical reference, not an active workflow.
+Do not run the MTA or local model-evaluation pipeline. Live Gray Swan campaigns
+default to `MANUAL_ARENA`; start at `docs/manual_campaign_start_here.md` and
+`gray_swan_playbook.md`. Reactivation requires an explicit reversal from the
+operator.
 
 ![MTA](docs/mta.gif)
 

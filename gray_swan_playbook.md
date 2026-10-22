@@ -5,6 +5,10 @@ AGENTS.md holds the repo-wide rules; this file is the campaign loop
 itself. Versioned by design: strategy-level only — no payloads, no
 model codenames (those live under gitignored `data/`).
 
+This playbook is for `MANUAL_ARENA` campaigns. Read
+`docs/manual_campaign_start_here.md` before a new event. The local MTA harness
+is retired; do not run it unless the operator explicitly reverses that decision.
+
 ## Division of labor
 
 The agent designs mechanisms, maintains the documentation, and runs the

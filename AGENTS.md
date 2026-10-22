@@ -1,15 +1,27 @@
 # AGENTS.md
 
-Operating notes for AI agents working in this repo. Read `README.md` for what MTA
-is and `ROADMAP.md` for where it's going; this file is the how-to-work-here.
+Operating notes for AI agents working in this repo. `README.md` and `ROADMAP.md`
+are historical MTA references; this file is the repository guardrail/how-to-work-here.
+
+**Retirement / mode router:** the operator has retired the local MTA harness.
+For all future Gray Swan campaigns, default to `MANUAL_ARENA` and read
+`docs/manual_campaign_start_here.md` plus `gray_swan_playbook.md`. Do not run
+MTA commands, local target/evaluation loops, or MTA monitoring jobs. The code
+and README/ROADMAP remain historical reference only; treat the harness as
+inactive unless the operator explicitly reverses this retirement.
 
 ## What this is
 
-A red-teaming harness that discovers/validates transferable jailbreak vectors for
-the Gray Swan arena. Scenario-agnostic core (`src/mta/{attacker,search,eval}`) +
-per-scenario `(target, judge)` plugins (`src/mta/scenarios/`).
+This repository contains the retired MTA red-teaming harness, which historically
+discovered/validated transferable jailbreak vectors for the Gray Swan arena. Its
+scenario-agnostic core is under `src/mta/{attacker,search,eval}` with per-scenario
+`(target, judge)` plugins under `src/mta/scenarios/`.
 
-## Build & test
+## Historical build & test (MTA retired)
+
+The commands below are archival reference for the retired harness. Do not run
+the MTA CLI or local model/evaluation pipeline for any live campaign. Offline
+tests are only for explicit archival-code maintenance requested by the operator.
 
 - `uv run pytest -q` — full suite; must be green before any commit.
 - Tests are **offline** (no network/API). Keep them that way: judge/constraint

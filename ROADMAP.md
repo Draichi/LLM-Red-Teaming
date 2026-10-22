@@ -1,7 +1,13 @@
-# MTA Roadmap
+# MTA Roadmap — archived
 
 Living plan — where the project is, where it's going, what's left. Update as we
 go. (Supersedes the original `FUTURE.md`, which described a since-abandoned scope.)
+
+**Retirement notice:** the operator has retired the MTA harness. The status,
+backlog, and commands below are historical; do not treat them as active work or
+run the local pipeline. Live Gray Swan campaigns default to `MANUAL_ARENA`; see
+`docs/manual_campaign_start_here.md` and `gray_swan_playbook.md`. Reactivation
+requires an explicit operator reversal.
 
 ## Mission
 
@@ -9,6 +15,9 @@ An elite red-teaming harness that **discovers and validates transferable
 jailbreak vectors** for the Gray Swan arena. Develop locally against a proxy →
 rank by reliability + transfer → submit the strong ones to the (manual) arena →
 refine against real arena feedback.
+
+**Historical mission:** this describes the harness's former development goal,
+not an active campaign or engineering roadmap.
 
 ## Where we are (2026-09-17)
 
