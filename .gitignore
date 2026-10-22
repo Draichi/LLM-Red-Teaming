@@ -40,6 +40,7 @@ reports/*.jsonl
 !reports/breaking_ties_event.md
 !reports/ipi_black_prep.md
 !reports/ipi_black_operational_checklist.md
+!reports/ipi_black_w1_lessons.md
 
 # But keep the placeholder objective file tracked.
 !data/behaviors/objectives.jsonl
