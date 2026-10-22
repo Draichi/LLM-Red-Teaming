@@ -53,3 +53,8 @@ reports/*.jsonl
 # calibration reports + benign corpus (live data, never committed)
 data/runs/*.json
 data/benign/
+
+# grayswan-reader (Arena page reader): login cookies + scraped Arena pages --
+# same policy as data/: present locally, never versioned.
+grayswan-reader/browser_profile/
+grayswan-reader/pages/
