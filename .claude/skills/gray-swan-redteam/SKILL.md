@@ -1,117 +1,84 @@
 ---
 name: gray-swan-redteam
 description: >-
-  Drive the MTA harness to discover, validate, and refine transferable jailbreak
-  vectors for the Gray Swan arena (authorized red-teaming competition). Use when
-  the user wants to red-team / find or harden an attack vector for a Gray Swan
-  scenario, add a new scenario plugin, choose an attacker or proxy model, or run
-  the mine → rank → pick → arena → refine pipeline in this repo.
+  Work Gray Swan arena campaigns (authorized red-teaming) in this repo under
+  MANUAL_ARENA mode: design attack mechanism families, package vectors for the
+  operator's manual submission, autopsy the returned traces, and maintain the
+  event writeup/dashboard. Use when the user wants to red-team or harden a
+  vector for a Gray Swan scenario, start or join an event, or run a campaign
+  round. The local MTA harness is RETIRED — this skill routes to the manual
+  playbook instead of the old local pipeline.
 ---
 
-# Gray Swan red-teaming with MTA
+# Gray Swan red-teaming (MANUAL_ARENA)
 
-Operating playbook for this repo's harness. Authoritative references (read them,
-don't duplicate): `AGENTS.md` (rules + conventions), `ROADMAP.md` (state + plan),
-`README.md` (overview). This skill is the *active workflow*; those are the detail.
+Active mode is **manual arena**: the agent designs mechanisms, runs the loop,
+and maintains the documentation; the operator submits every vector to the arena
+BY HAND and brings back scores + traces. The arena is the only oracle and
+operator time is the bottleneck — never produce work that doesn't change the
+next round's design.
 
-## Context
+## MTA harness is retired — do not run it
 
-MTA finds attack vectors against LLMs for the **Gray Swan Proving Ground**, a real
-red-teaming competition. Work is authorized. The job: develop a vector locally
-against a proxy model, prove it transfers, and hand the user a payload to submit
-**manually** to the arena, then harden it against the arena's real responses.
+No `mta agentic`, `refine`, `refine-manual`, `replay-vectors`, `pick-vector`,
+`proxy-eval`, `record-eval`, or any local target/attacker/judge model call. No
+mining, no evaluation loops, no proxy panels. `uv run pytest` only for archival
+maintenance the operator explicitly requests. Reactivating MTA requires the
+operator to explicitly reverse the retirement — and the repo docs get updated
+before any MTA code runs. Scenario Python plugins (`src/mta/scenarios/`) are
+archival reference; judge mechanics now live in writeup headers, not Python
+classes.
 
-## Guardrails (never drift — from AGENTS.md)
+## Authorities — read them, don't duplicate them
 
-1. **Payloads are never *versioned*.** They exist locally and the user needs them,
-   but live in gitignored `data/` (`data/vectors/`, `data/runs/`, `data/calibration/*`).
-   Tracked files ship machinery + abstract strategy *labels* only. Check staging
-   before any commit.
-2. **The arena stays manual.** Never script or automate arena submission.
-3. **Commit/push only when the user explicitly asks.** Otherwise leave the tree dirty.
-4. **A fuzzy-judge "solved" needs human confirmation** (~15% FPR); a verifiable-judge
-   "solved" (~0 FPR) is trustworthy. Say which kind you're holding.
-5. **Don't force a false positive.** If a target resists, report the wall honestly.
+In this order:
 
-## The pipeline
+1. **Current user instruction + official event spec / judge mechanics** — the
+   authorized task, success criterion, slots, and rules.
+2. **`docs/manual_campaign_start_here.md`** — mode router, source precedence,
+   roles, new-event initialization checklist.
+3. **`gray_swan_playbook.md`** — the operating procedure: the round loop
+   (design → entrega → submissão → autópsia → writeup), trace rules,
+   operational checklists, reply discipline, no-terminal-wall rule.
+4. **`AGENTS.md`** — repository guardrails (payloads never versioned; the arena
+   stays manual; no terminal walls; no false positives; commit only on explicit
+   request) and the durable arena/model lessons.
+5. **Current event state** — `data/writeups/<event>_dashboard.md` and the event
+   writeup; newest evidence wins over prep notes, older reports, and memory.
 
-Run commands as `uv run mta <cmd>`; the target needs `FEATHERLESS_AI_API_KEY` in
-the shell (or the current provider's key — see the migration note in ROADMAP).
-Model calls cost money and the user runs them; propose the command, let them run it.
+`README.md` and `ROADMAP.md` are historical MTA references; their command
+tables and backlog are not active work instructions.
 
-1. **Mine** — `mta agentic --scenario S --model <proxy> --attacker-model <atk> --attempts N`
-   (single-shot for `indirect`/`chat_content`) or add `--depth D [--runs R]` for the
-   multi-turn beam (`agentic`/`chat_content`). Solved payloads save to the library.
-2. **Rank** — `mta replay-vectors --scenario S --models "…" --trials 5`: reliability
-   (breaks/trials — the arena is stochastic & re-runnable, so any non-zero rate is
-   usable) and cross-model transfer. Prefer a vector that breaks *several* models.
-3. **Pick** — `mta pick-vector --scenario S --last-batch --list`, then `--index i --out F`.
-4. **Arena (manual, by the user)** — the user pastes the payload, wrapping the hidden
-   part in real obfuscation (`[color=#1b2838]…[/color]` / zero-width unicode) and
-   brings back the per-model eval.
-5. **Refine** — `mta refine-manual --scenario S --prev-file P --response-file R --note "…"`:
-   variants from the arena's *real* feedback. Or `mta refine --scenario S --model <proxy>`
-   for an automated feedback loop against a local proxy.
-6. **Proxy check** — `mta proxy-eval --scenario S --truth <arena-truth.jsonl> --models "…"`:
-   rank candidate proxies by how well they predict the arena (Spearman). Use it to
-   pick the dev proxy and to validate a provider switch.
+## The loop, compressed (the playbook is authoritative)
 
-## Model-selection judgment (hard-won)
+**design** (read ALL prior traces first — dispositions, dead families, env
+facts from refusals; new mechanism family when the current one has no
+gradient; design dossier + pre-registered death criterion in every vector
+file) → **entrega** (plain unformatted text for the arena input + trace-folder
+scaffold `data/runs/arena/<event>/<scenario>/v<N>/` with one file per model)
+→ **submissão** (operator, by hand; lightweight break/no-break reporting on
+reruns) → **autópsia** (read every pasted trace — "colei" means the trace
+files are populated: fire the autopsy agents immediately; classify every
+model's disposition, zero included) → **writeup same day** (disposition map,
+laws the round taught, next design, dashboard update, closure-propagation
+sweep).
 
-- **Attacker:** a coherent mainstream instruction-follower (DeepSeek-V3.1) beats an
-  abliterated model for injection/tool-misuse (abliterated produced garbage; needed
-  a payload validator). Abliterated only helps for overtly-harmful *content*
-  generation, where a safety-tuned attacker refuses.
-- **Proxy / target:** must resemble the arena. Chinese models (Qwen, GLM, DeepSeek,
-  Kimi) resisted more and are likely absent from the arena; Western models
-  (Mistral, Phi) transferred better. GLM-4.7 is a wall (aligned + agentic re-search).
-  Measure it with `proxy-eval`, don't guess.
-- **Thinking:** on for the target (natural behaviour), off for the attacker.
+Reply discipline: every reply states the LOOP POSITION per scenario — current
+step, next step, and who holds the ball (operator or agent).
 
-## Judges: verifiable vs fuzzy
+## Scenario writeup template
 
-- **Verifiable** (tool-misuse, injection): success is a checkable predicate on what
-  the target did → ~0 FPR, auto-solve is trustworthy. Prefer these scenarios.
-- **Fuzzy** (`radical_propaganda`): an LLM rubric (~15% FPR) → a "solved" is a
-  human-review candidate. Keep the judge honest: a security warning or a content
-  leak must NOT score as a break.
+`writeup_template.md` (in this skill folder) scaffolds a scenario-level
+writeup: arena axes, intel log of rounds, kill log (model × vector × per-axis
+scores), disposition maps. Event-level state lives in
+`data/writeups/<event>.md` + `<event>_dashboard.md` per the playbook — copy
+the template into the scenario's section when it fits. Everything under
+`data/writeups/` is gitignored work product: working attack strings never
+enter tracked files.
 
-## Adding a scenario plugin
+## Cross-links
 
-A scenario is a class in `src/mta/scenarios/` with `kind`
-(`indirect` | `agentic` | `chat_content`), `system_prompt`, `tools`,
-`attacker_objective`, `strategies` (abstract labels, no payloads), `attacker_guidance`,
-a verifiable `judge`/`judge_injection`, and optional `validate_payload`, `feedback`.
-Register it in `scenarios/__init__.py`. Mirror `malware_game.py` (indirect) or
-`hotel_booking.py` (agentic). Get the arena spec from the user (criteria + setup +
-where the input goes) and make `assemble()` arena-faithful.
-
-**Score EVERY arena axis (required).** Gray Swan grades a scenario on multiple
-axes and counts it broken only if EACH is ≥70%. The local judge must therefore
-score every axis the arena grades — a primary "did the misuse happen" *plus the
-scenario's secondary axes* — and a local "solved" must require them all to pass
-(mirrors "≥70 each"). **Originality has appeared in every scenario so far** (the
-model must generate the content in its own words, not parrot the injection) —
-use `constraints.origination_score` and gate on it, as `malware_game` does. If
-you only score the primary axis, the local judge will report "solved" on outputs
-the arena rejects on a secondary axis (this happened — parroted justifications
-scored locally but failed arena Originality). Stealth is usually a property of the
-payload set by the human at submit time, not the target's reply, so it is not
-scored here — note that in the scenario.
-
-Add offline tests for every axis your judge scores; `uv run pytest -q` must stay green.
-
-**Start a writeup.** When scaffolding a scenario, copy `writeup_template.md` (in
-this skill folder) to `data/writeups/<scenario>.md` (gitignored — it holds
-payloads) and populate it as you iterate: scenario description + arena axes, an
-intel log of rounds (what was tried, how models reacted, the lesson), a kill log
-(model × vector × per-axis scores), and the vectors themselves. Update it every
-round — it is the memory of what breaks what, and the source for a final human writeup.
-
-## When the vector underperforms in the arena
-
-Read the per-model feedback (which axis failed). Near-misses on one axis (e.g.
-Originality) refine easily — steer the attacker to that axis. If most models
-identify the injection as an obvious instruction, move from bare imperative toward
-information the model connects to the user's exact problem itself. If a target is a
-wall, say so — don't manufacture a break.
+- **`gray-swan-reader` skill** — pulls arena/challenge pages into local
+  Markdown for agent reading (read-only; never automates submission).
+- Durable mechanism-family catalog: `docs/mechanism_families.md`. External
+  SOTA sources: `docs/jailbreak_sota_references.md`.
