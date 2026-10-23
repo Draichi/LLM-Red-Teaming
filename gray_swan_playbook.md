@@ -18,6 +18,8 @@ never ask for work that doesn't change the next round's design.
 
 ## The round loop
 
+Traces: agent pulls via grayswan-reader from operator-provided URLs; agent owns autopsy + next vector + dashboard update. Operator = submission only.
+
 **Traces are the intel (2026-10-17, operator rule):** the agent ALWAYS
 reads every pasted trace — that is where env facts, dispositions, and
 the next mechanism come from. No design work ever precedes it.

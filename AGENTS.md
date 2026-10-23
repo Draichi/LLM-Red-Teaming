@@ -188,6 +188,19 @@ These survive the provider migration:
 
 ## Workflow (the pipeline)
 
+**Round loop, division of labor (durable, 2026-10-23):** the agent writes the
+vector — full payload text into `data/vectors/` (gitignored) plus the
+submission block. The operator's ONLY manual step is the arena submission; they
+return the run URLs, nothing else. From there the agent drives everything:
+pull every trace itself with the `gray-swan-reader` skill (never ask the
+operator to copy-paste transcripts), dispatch the autopsy, classify
+dispositions, design vN+1, and update the event+wave dashboard file after
+EVERY round — a round not reflected in the dashboard didn't happen; chat
+pastes are not a record. The agent's mechanism repertoire spans the whole
+acervo: prior-wave lessons AND external SOTA — re-mine
+`docs/jailbreak_sota_references.md` sources and current literature before
+designing every new family. Prior waves are prior, not a boundary.
+
 **Gray Swan arena campaigns run on the manual round loop, not the local
 pipeline below — `gray_swan_playbook.md` is authoritative** (autópsia →
 design → entrega → submissão → autópsia; trace-folder convention,
