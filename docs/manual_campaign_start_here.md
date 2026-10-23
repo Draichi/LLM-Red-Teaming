@@ -25,7 +25,7 @@ before running any MTA code.
 
 ## Roles
 
-- **Operator:** manually submits the vector; returns Arena scores, judge notes, and traces where available.
+- **Operator:** manually submits the vector. For IPI Black W2, the operator reports `grayswan-reader` can retrieve Arena responses without transcript paste; this does not automate submissions.
 - **Autopsy owner:** owns vector/trace-level analysis and writes the disposition map, evidence, and laws into the event writeup.
 - **Strategic supervisor:** maintains mechanism coverage, SOTA, cross-round priorities, and an independent opinion log; does not duplicate the autopsy.
 - **Vector designer:** proposes a materially distinct family, writes a design dossier and pre-registered criterion, and saves working text only in the event's gitignored data area.
@@ -54,6 +54,7 @@ Follow `gray_swan_playbook.md`: diagnosis → mechanism design → operator deli
 ## Scope boundaries
 
 - Arena submission, browser clicks, or other interaction that would perform a submission must remain human/manual and follow the event rules.
+- If `grayswan-reader` is exposed in the current agent session, use it only as a read-only response-retrieval path. Keep the autopsy owner responsible for disposition analysis; if the reader is not exposed, do not claim to have read responses through it.
 - Do not run local target calls, MTA jobs, proxy evaluations, or budgeted model loops while MTA is retired.
 - Keep payloads, traces, and Arena responses out of tracked files. Follow repository gitignore/commit guardrails.
 - Do not modify another owner's dashboard or postmortem without assignment; report discrepancies to that owner.
