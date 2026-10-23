@@ -6,7 +6,7 @@ __pycache__/
 dist/
 build/
 
-# Large / generated data and run artifacts — keep the harness, not the payloads.
+# Local evaluation artifacts and Arena evidence are private working data.
 data/calibration/*.json
 data/calibration/*.jsonl
 data/calibration/*.csv
@@ -22,13 +22,12 @@ data/candidates/
 data/writeups/
 # Per-call spend ledger (SQLite) -- local telemetry, regenerated every run.
 data/ledger.db
-# Learned mechanism exemplars (proven vectors decomposed into features) --
-# attack work product, same policy as vectors.
+# Legacy local mechanism artifacts remain ignored as private working data.
 data/mechanisms.jsonl
-# Community pattern corpus (unvalidated) + its cloned source collection.
+# Local pattern corpora and source collections remain unversioned.
 data/patterns.jsonl
 data/patterns_*/
-# Arena truth: real Mr. Swan evals, the calibration loop's data.
+# Arena evaluations and response records are local event data.
 data/arena_truth.jsonl
 reports/*.md
 reports/*.png
@@ -45,12 +44,12 @@ reports/*.jsonl
 # But keep the placeholder objective file tracked.
 !data/behaviors/objectives.jsonl
 
-# Secrets: never version the API key. Fill .env locally; .env.example is tracked.
+# Secrets and credentials are never versioned. Fill .env locally.
 .env
 .env.local
 .env.*.local
 
-# calibration reports + benign corpus (live data, never committed)
+# Local evaluation reports and benign corpora are never committed.
 data/runs/*.json
 data/benign/
 

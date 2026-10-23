@@ -6,8 +6,9 @@ itself. Versioned by design: strategy-level only — no payloads, no
 model codenames (those live under gitignored `data/`).
 
 This playbook is for `MANUAL_ARENA` campaigns. Read
-`docs/manual_campaign_start_here.md` before a new event. The local MTA harness
-is retired; do not run it unless the operator explicitly reverses that decision.
+`docs/manual_campaign_start_here.md` before a new event. Arena submissions are
+human-operated; this workspace's active workflow does not use local target or
+model-evaluation loops.
 
 ## Division of labor
 
@@ -18,17 +19,15 @@ never ask for work that doesn't change the next round's design.
 
 ## The round loop
 
-Traces: agent pulls via grayswan-reader from operator-provided URLs; agent owns autopsy + next vector + dashboard update. Operator = submission only.
+Trace intake: the operator provides run URLs; the assigned round agent retrieves
+each response and tool-call detail with `grayswan-reader`, coordinates the
+autopsy/next-vector handoff according to event ownership, and updates the
+dashboard. Do not ask the operator to paste transcripts.
 
-**Traces are the intel (2026-10-17, operator rule):** the agent ALWAYS
-reads every pasted trace — that is where env facts, dispositions, and
-the next mechanism come from. No design work ever precedes it.
-Operator trigger: **"colei" = the round's trace files are populated =
-fire the parallel autopsy agents immediately** ("sem perder nada").
-Lightweight reporting (break/no-break in chat) covers the scoreboard
-only; it never exempts the agent from reading the traces. When in
-doubt, list the round folder — the files, not the chat message, say
-what exists.
+**Traces are the intel:** use `grayswan-reader` on the operator-provided URLs
+before designing the next vector. Verify the reader manifest covers the expected
+models; the files, not a chat summary, establish what was retrieved. If access or
+coverage is incomplete, record the gap rather than requesting transcript paste.
 
 autópsia → design → entrega → submissão → autópsia …
 
@@ -111,13 +110,13 @@ defined artifact; a round is not done until the writeup carries it.
    mechanism result; re-field it as `<vector>b` (same vector, fresh
    trace folder) instead of redesigning.
 
-5. **Autópsia** — save received traces into the round's files, then
-   fire the parallel subagents: they read ALL files and append
-   AUTOPSY blocks ("sem perder nada" — lose nothing). Classify each
+5. **Autópsia** — retrieve every response from the supplied URLs with
+   `grayswan-reader`, save the results into the round's files, then
+   fire the parallel autopsy subagents. Classify each
    model's disposition (converter / detector / silent refuser /
    skipper / escalator); every model scored, including 0s. A round
-   that genuinely arrives without pasted traces (rerun-only) says so
-   in the writeup and its conclusions stay inference-tier.
+   with incomplete reader coverage records the missing models and keeps
+   conclusions inference-tier.
 
 6. **Writeup same day** — `data/writeups/<event>.md` gets the
    disposition map, the laws the round taught, and the next round's
