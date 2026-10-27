@@ -10,10 +10,10 @@ build/
 data/calibration/*.json
 data/calibration/*.jsonl
 data/calibration/*.csv
-# Arena response transcripts (real Gray Swan content) -- the user's work product.
+# Arena round material (URLs, traces, and autopsies) is private working data.
 data/calibration/*.txt
 data/runs/*.jsonl
-data/runs/arena/**/*.txt
+data/runs/arena/
 # Validated attack vectors: the user's red-teaming work product, never versioned.
 data/vectors/
 # Unscreened candidate payloads and validation scripts -- also never versioned.

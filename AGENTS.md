@@ -49,6 +49,11 @@ manual and operator-controlled.
 - Keep mechanism documentation context-independent: procedure, constraints,
   verification signals, and applicability belong in tracked docs; literal
   payloads remain local under `data/`.
+- **Expand a proven converter before redesigning it.** After an official break,
+  freeze the winning vector and delivery slots verbatim and run the remaining
+  untested model population before changing family or scenario, unless the
+  operator explicitly reprioritizes. Do not reword for non-converters midway
+  through the expansion; record per-model conversion and delivery failures.
 - Follow explicit event ownership. When assigned to orchestrate a round, the
   agent retrieves traces, coordinates autopsy, and updates the dashboard; do
   not duplicate another owner's analysis without assignment.

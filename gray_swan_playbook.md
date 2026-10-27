@@ -139,6 +139,24 @@ defined artifact; a round is not done until the writeup carries it.
    model codenames MAY be committed; only working attack strings are
    forbidden).
 
+## Break-driven expansion (2026-10-27)
+
+An official judge-confirmed break changes the next loop position from redesign
+to **verbatim population expansion**. Freeze the winning body, metadata,
+carrier, slot count, and optional-slot state; submit that same package to the
+remaining untested models before moving to another family or scenario, unless
+the operator explicitly reprioritizes. Do not add newly observed tool names or
+identifiers to the winning payload, and do not ship model-specific rewordings
+mid-panel. Preserve the starting and ending official scoreboards, retrieve
+supplied traces, and classify each non-converter without treating infrastructure
+or ingestion failure as resistance.
+
+Technique-specific procedures and their field evidence belong in
+`docs/mechanism_families.md`, not in `AGENTS.md` or this workflow playbook.
+The WB2S3 readable saved-continuation result is cataloged there under B11.
+Literal role sequences, working payloads, identifiers, and Arena traces stay in
+gitignored `data/`.
+
 ## Operational checklists (2026-10-18)
 
 Per-round pre-flight/autopsy standard:
