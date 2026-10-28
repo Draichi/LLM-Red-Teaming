@@ -88,6 +88,47 @@ EXPAND_FIND_JS = """
 }
 """
 
+# Cards de tool são buttons type=button dentro do card visual da tool, com nome
+# monoespaçado e chevron-right. Submit Break não tem essa estrutura. A checagem
+# de formulário e a blacklist de submissão são repetidas antes de cada clique.
+TOOL_CARD_FIND_JS = """
+() => {
+    const banned = /submit|break/i;
+    const toolName = /^(?:mcp__)?[a-z][a-z0-9_]*(?:-[a-z0-9_]+)*$/;
+    for (const el of document.querySelectorAll('main button[type="button"]')) {
+        if (el.closest('[data-gsr-tool-expanded]')) continue;
+        if (!el.querySelector('svg.lucide-chevron-right')) continue;
+        const name = (el.querySelector('span.font-mono')?.textContent || '').trim();
+        if (!toolName.test(name)) continue;
+        const card = el.parentElement;
+        if (!card || !String(card.className || '').includes('bg-muted/30')) continue;
+        if (banned.test(el.innerText || '') || banned.test(card.innerText || '')) continue;
+        if (el.closest('form') || el.getAttribute('formaction')) continue;
+        return el;
+    }
+    return null;
+}
+"""
+
+SHOW_FULL_FIND_JS = """
+() => {
+    const banned = /submit|break/i;
+    for (const card of document.querySelectorAll('main div')) {
+        if (!String(card.className || '').includes('bg-muted/30')) continue;
+        if (!card.querySelector('button[type="button"] span.font-mono')) continue;
+        if (banned.test(card.innerText || '')) continue;
+        for (const el of card.querySelectorAll('button[type="button"]')) {
+            const text = (el.innerText || '').trim();
+            if (!/^Show full(?: \\([\\d,]+ chars\\))?$/.test(text)) continue;
+            if (el.closest('[data-gsr-output-expanded]')) continue;
+            if (el.closest('form') || el.getAttribute('formaction')) continue;
+            return el;
+        }
+    }
+    return null;
+}
+"""
+
 
 # ---------------------------------------------------------------------------
 # Utilitários
@@ -318,6 +359,42 @@ def expand_controls(page, passes=2):
     return total
 
 
+def _expand_one_at_a_time(page, find_js, marker, limit):
+    total = 0
+    for _ in range(limit):
+        handle = page.evaluate_handle(find_js)
+        try:
+            elh = handle.as_element()
+            if elh is None:
+                break
+            try:
+                elh.evaluate(f"el => el.setAttribute('{marker}', '1')")
+                elh.click(timeout=3_000)
+                total += 1
+                page.wait_for_timeout(150)
+            except Exception:
+                pass
+        finally:
+            handle.dispose()
+    if total:
+        page.wait_for_timeout(500)
+    return total
+
+
+def expand_tool_cards(page, max_cards=200):
+    """Abre somente cards estruturais de tools, sem controles de submissão."""
+    return _expand_one_at_a_time(
+        page, TOOL_CARD_FIND_JS, "data-gsr-tool-expanded", max_cards
+    )
+
+
+def expand_output_controls(page, max_controls=200):
+    """Expande somente 'Show full' dentro dos cards de tools."""
+    return _expand_one_at_a_time(
+        page, SHOW_FULL_FIND_JS, "data-gsr-output-expanded", max_controls
+    )
+
+
 def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selector=None, listing_url="", capture_api=False, expand=False):
     page = ctx.new_page()
     try:
@@ -330,10 +407,11 @@ def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selecto
             except PWTimeoutError:
                 pass
         if expand:
-            try:
-                expand_controls(page)
-            except Exception:
-                pass  # expansão é best-effort; extração segue sem ela
+            for expander in (expand_controls, expand_tool_cards, expand_output_controls):
+                try:
+                    expander(page)
+                except Exception:
+                    pass  # expansão é best-effort; extração segue sem ela
         data = extract_page(page, content_selector)
         return save_page(out_dir, url, data, listing_url)
     finally:
@@ -489,7 +567,7 @@ def build_parser():
     sp.add_argument("--capture-api", action="store_true",
                     help="grava as respostas JSON da SPA em <out>/api/")
     sp.add_argument("--expand", action="store_true",
-                    help="clique restrito: expande só controles 'Expand...' (nunca submissão)")
+                    help="clique restrito: expande detalhes, cards e outputs de tools (nunca submissão)")
     sp.add_argument("--content-selector", help="extrai o texto apenas deste seletor CSS")
     sp.add_argument("--wait-selector", help="espera este seletor CSS aparecer antes de extrair")
     sp.set_defaults(func=cmd_fetch)
@@ -503,7 +581,7 @@ def build_parser():
     sp.add_argument("--capture-api", action="store_true",
                     help="grava as respostas JSON da SPA em <out>/api/")
     sp.add_argument("--expand", action="store_true",
-                    help="clique restrito: expande só controles 'Expand...' (nunca submissão)")
+                    help="clique restrito: expande detalhes, cards e outputs de tools (nunca submissão)")
     sp.add_argument("--content-selector")
     sp.add_argument("--wait-selector")
     sp.set_defaults(func=cmd_open)

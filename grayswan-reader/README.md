@@ -69,7 +69,7 @@ puladas nas próximas execuções (`--force` refaz).
 | `--content-selector SEL` | — | extrai o texto só deste seletor CSS |
 | `--wait-selector SEL` | — | espera este elemento aparecer antes de extrair |
 | `--capture-api` | — | salva respostas JSON da SPA em `pages/api/` |
-| `--expand` | — | clique restrito: expande controles "Expand to see details" |
+| `--expand` | — | clique restrito: expande detalhes, cards e outputs completos de tools |
 | `--cdp-port N` | `9222` | porta de debug do Arc (só mude se abrir em outra) |
 
 ## Para agentes (Claude etc.)
@@ -81,28 +81,35 @@ puladas nas próximas execuções (`--force` refaz).
 4. Não rode dois comandos ao mesmo tempo.
 5. Em chats da Arena, use `--capture-api --expand` (próxima seção).
 
-## Expandir detalhes de tool calls (`--expand`)
+## Expandir detalhes e outputs de tool calls (`--expand`)
 
-Nas páginas de chat da Arena, os nomes/argumentos das tools chamadas pelo
-modelo só são renderizados ao clicar em **"Expand to see details"** — não estão
-no DOM fechado, no payload SSR nem em XHR (o app ignora clique sintético
-`el.click()`; usa `isTrusted`). Com `--expand` o reader clica nesse controle
-uma única vez, via input real do navegador.
+Nas páginas de chat da Arena, os detalhes das tools são renderizados
+client-side, não no payload SSR nem em XHR. Com `--expand`, o reader usa input
+real do navegador em três etapas:
 
-Limites de segurança, todos no código (`EXPAND_FIND_JS` em `reader.py`):
+1. Abre **"Expand to see details"** para revelar os cards de tools.
+2. Abre cada card e captura `ARGUMENTS` e `OUTPUT`.
+3. Aciona **"Show full"** ou **"Show full (N chars)"** dentro dos cards para
+   capturar argumentos e outputs longos sem truncamento da UI.
 
-- Só elementos cujo texto casa com whitelist (`expand | show more | ver mais |
-  detalhes`) e NÃO casa com a blacklist (`submit | break | send | post | reply |
-  delete | confirm | place | order | pay | refund`).
-- O contêiner clicável também passa pela blacklist antes de receber o clique,
-  e o clique é dado **no próprio elemento** (sua bounding box), nunca por
-  coordenada arbitrária — nenhum botão vizinho pode ser atingido.
-- Máx. 30 controles por página, 1 clique cada (marcados com
-  `data-gsr-expanded` para não re-clicar).
+Limites de segurança, todos no código (`EXPAND_FIND_JS`, `TOOL_CARD_FIND_JS` e
+`SHOW_FULL_FIND_JS` em `reader.py`):
 
-Isto é um clique **restrito autorizado pelo operador** (2026-10-22), apenas
-para leitura de detalhes de tool calls. Submissão na Arena continua 100%
-manual — o reader não tem e não deve ganhar caminho de escrita para a Arena.
+- O disclosure geral aceita apenas a whitelist (`expand | show more | ver mais |
+  detalhes`) e rejeita sua blacklist de ações.
+- Cards só são clicados quando têm toda a estrutura de tool: `main`,
+  `button[type="button"]`, nome em `span.font-mono`, `chevron-right` e o card
+  visual `bg-muted/30`. Botões em formulários ou com `formaction` são rejeitos.
+- **"Submit Break"** e qualquer texto contendo `submit` ou `break` são rejeitados
+  no card e no controle. O seletor de cards não corresponde ao botão Submit Break.
+- **"Show full"** só é clicado dentro de um card de tool já identificado, com o
+  texto exato do controle e as mesmas verificações de formulário e submissão.
+- O clique é dado no próprio elemento, nunca por coordenada arbitrária. Marcas
+  `data-gsr-*` impedem novos cliques; os limites são 30 disclosures, 200 cards e
+  200 controles de output por página.
+
+Esses cliques são restritos à leitura. Submissão na Arena continua 100% manual
+— o reader não tem e não deve ganhar caminho de escrita para a Arena.
 
 ## Solução de problemas
 
