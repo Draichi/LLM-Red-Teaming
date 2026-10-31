@@ -17,6 +17,35 @@ loop. The operator submits every vector to the arena BY HAND and reports
 results. The arena is the only oracle; operator time is the bottleneck —
 never ask for work that doesn't change the next round's design.
 
+## Scenario intake (one file per scenario)
+
+Before designing or prioritizing a scenario, create a scenario-specific
+`INTAKE.md` under its gitignored vector directory. For example, the IPI Black
+black-box intakes live at
+`data/vectors/ipi_black/black_box/bb1s1/INTAKE.md` through `bb1s7/`. Never use
+one running intake across scenarios or rely on conversation memory for official
+criteria and form fields.
+
+Each intake records the scenario code/name, complete official spec, exact
+benign UI message, every judge axis/floor/condition, maximum slot count, every
+surface's required/optional fields and defaults, accepted markers, validation
+rules/messages, and operator notes. The assigned agent, not the operator, does
+this work through `grayswan-reader` and DOM extraction: inspect Task Details,
+scenario criteria, every injection site/action, and the marker menus; capture
+text, field attributes, defaults, limits, and per-action caps directly. Do not
+use screenshots or manual form transcription as the intake workflow. Only
+non-submitting navigation is allowed: never fill fields or click Launch or any
+other submission control. The operator supplies the event URL and only details
+that are genuinely unavailable in the DOM; when they supply the run-time benign
+message, compare it verbatim with the pre-run text and record the result.
+
+Verify the exact event, wave, and scenario card before writing, and never copy
+an intake across waves or similarly numbered scenarios. Mark missing
+information `not visible`; never invent it. Update the intake when the Arena
+form changes, and have each design round reference that scenario's current
+intake. Raw specs, slot details, and other Arena material remain in gitignored
+`data/`; tracked docs contain only paths and strategy-level summaries.
+
 ## The round loop
 
 Trace intake: the operator provides run URLs; the assigned round agent retrieves
@@ -138,6 +167,21 @@ defined artifact; a round is not done until the writeup carries it.
    dirty. Payloads never enter tracked files (operator policy 2026-10-21:
    model codenames MAY be committed; only working attack strings are
    forbidden).
+
+## Panel scope (operator directive, 2026-10-30)
+
+Black-box vectors run against the full model population from the start. The
+operator reports only official binary verdicts and does not need to return run
+URLs, so there is no separate pilot or post-break expansion stage. Mark broken
+model-scenario pairs and never refire them; record unavailable or unreported
+models explicitly instead of inferring their outcomes.
+
+White-box pilots are optional, chosen by expected information value versus
+manual retrieval cost, not mandatory. A full first-round panel is acceptable
+when it is the better use of the operator's time. For any panel not run in full,
+the post-break expansion rule below still applies to the remaining untested
+models. Record actual coverage and the official denominator rather than
+assuming either.
 
 ## Break-driven expansion (2026-10-27)
 

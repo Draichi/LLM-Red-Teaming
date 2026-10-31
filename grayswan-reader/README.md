@@ -81,6 +81,101 @@ puladas nas próximas execuções (`--force` refaz).
 4. Não rode dois comandos ao mesmo tempo.
 5. Em chats da Arena, use `--capture-api --expand` (próxima seção).
 
+## Intake de cenários via DOM (responsabilidade do agente)
+
+Para montar ou atualizar o `INTAKE.md` de um cenário, o agente — não o operador
+— inspeciona a página e extrai o texto e os atributos do DOM. O operador fornece
+a URL do evento e somente informações que realmente não estejam disponíveis na
+página. Não peça transcrição manual de formulários nem prints; o intake não tem
+seção de screenshots.
+
+### Limites obrigatórios
+
+- Use somente a URL do evento fornecida pelo operador e a sessão já autenticada
+  do Arc. A navegação permitida é local e não submissora: cartão do cenário,
+  critérios, **New injection**, seletores de site/action, disclosures e menus de
+  markers necessários à leitura.
+- Clique somente em controles identificados de forma inequívoca, com texto/role
+  conferidos e contagem esperada. Nunca use coordenadas arbitrárias.
+- **Nunca clique em Launch, Submit Break ou qualquer controle de submissão.**
+  Não use `button[type="submit"]`, não preencha campos, não insira markers e não
+  adicione comportamento de submissão ao reader. Delete, Upload custom site e
+  Use template também não são necessários para o intake.
+- Não tente provocar erros de validação por submissão. Registre as regras
+  visíveis e marque erros que só apareceriam após submeter como `not visible`.
+- Material bruto do Arena fica apenas em `pages/` ou no diretório gitignored do
+  cenário sob `data/`; documentação rastreada contém só o procedimento.
+
+### Sequência reutilizável
+
+1. Abra a URL do evento com `reader.py open ... --capture-api --settle 5`. Para
+   navegação DOM adicional, use `browser_session` do `reader.py` com Playwright
+   em um script pontual, sempre a partir de `grayswan-reader/` e sem comandos de
+   navegador concorrentes.
+2. Os cartões de cenário são `button[type="button"]`, não necessariamente links.
+   Por isso, `reader.py links` pode não encontrar URLs de cenários. Selecione o
+   cartão pelo código e nome completos, confirme a wave e verifique o título em
+   **Task Details** antes de extrair qualquer coisa. Nunca reutilize o intake de
+   um cenário de numeração parecida ou de outra wave.
+3. A seleção do cenário pode não mudar a URL, e a página pode restaurar o último
+   cenário selecionado. Não confie na URL, no nome do arquivo salvo ou no
+   `manifest.json` como prova do cenário: confira sempre o heading de Task
+   Details no DOM atual.
+4. Extraia **Harmful task** e **Benign task description** de Task Details. Abra
+   **See success criteria** / **View scenario criteria** e capture todo o painel:
+   descrição, Overview, Victim, Services and Resources, Objective e Criteria.
+   Selecionar um critério pode apenas destacá-lo; se eixos, floors, scoring ou
+   rationale adicionais não aparecerem, escreva `not visible`, sem inferi-los.
+5. Inventarie o injection obrigatório já presente e use **New injection** para
+   inspecionar as demais surfaces. Os seletores de site e action expõem opções
+   com `role=option`; os triggers têm labels como `Injection N site: ...` e
+   `Injection N action: ...`. Uma surface com uma única action pode selecioná-la
+   automaticamente e deixar o seletor desabilitado. Enumere tudo na UI atual,
+   sem copiar actions de outro cenário.
+6. Use uma página nova para cada action, ou restabeleça explicitamente o estado
+   inicial, para não carregar campos entre formulários. O injection obrigatório
+   costuma ser índice 0 e o primeiro adicionado índice 1. Na estrutura atual, os
+   campos têm IDs `world-injection-<índice-zero-based>-field-<nome>`.
+7. Para cada campo, extraia o `innerText` do contêiner mais próximo e as
+   propriedades DOM: tag, type, value, placeholder, maxLength, required, checked
+   e/ou `aria-checked`. Não restrinja a busca a `input, textarea, select`:
+   checkboxes podem ser `button[role="checkbox"]`. Para esses controles, leia as
+   propriedades via `evaluate`; `input_value()` só vale para input/textarea/select.
+8. Não confunda validação visual com atributos HTML: um campo pode ter asterisco
+   e aparecer como obrigatório no preflight mesmo com `required=false` no DOM.
+   Da mesma forma, `maxLength=-1` significa ausência do atributo de limite, não
+   prova de que o backend aceita texto ilimitado; registre `no limit visible`.
+9. Capture o máximo global em **New injection (N/M max)** e o limite individual
+   no texto do card, como `1 of N ... injections used`. Registre required e
+   optional fields, defaults, placeholders, exemplos, descrições, limites de
+   caracteres, preflight e custo visível, sem pressupor que sejam iguais entre
+   cenários.
+10. Para markers, abra um controle **Marker** e leia os itens de menu e submenus.
+    Grupos têm `aria-haspopup="menu"`; clicar no grupo abre suas partes, enquanto
+    clicar numa folha insere o marker e não deve ser feito. Se hover não abrir de
+    forma confiável, clique apenas no grupo e reabra o menu entre grupos. Leia
+    também **What are markers?** e confirme ao final que o valor do campo
+    continua vazio.
+11. **View content** abre um preview do conteúdo; não é necessário para extrair
+    os campos do DOM. Não confunda esse preview com expandir o card. Se for
+    preciso expandir visualmente, use o disclosure **Injection N**, mas continue
+    registrando o texto e os atributos, não screenshots.
+12. Se o operador fornecer a mensagem benigna mostrada durante a run, compare-a
+    com o texto pré-run preservando quebras de linha e parágrafos. Registre a
+    fonte e se a igualdade exata foi confirmada; não normalize espaços antes da
+    comparação.
+13. Preencha o `INTAKE.md` específico do cenário com data, URL, spec completo,
+    mensagem benigna, critérios/judge visíveis, slots/actions/caps, campos,
+    defaults, markers, validações e notas. Revise a contagem de actions e blocos
+    e deixe `not visible` em tudo que não pôde ser lido, sem usar Launch para
+    completar lacunas.
+
+Em scripts pontuais de SPA, `wait_until="networkidle"` pode demorar por causa de
+polling/WebSocket. Para essa navegação controlada, prefira
+`wait_until="domcontentloaded"` seguido de espera pelo cartão ou seletor
+específico necessário. O comando normal do reader continua adequado para salvar
+páginas e chats.
+
 ## Expandir detalhes e outputs de tool calls (`--expand`)
 
 Nas páginas de chat da Arena, os detalhes das tools são renderizados

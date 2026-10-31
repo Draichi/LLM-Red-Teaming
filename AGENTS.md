@@ -18,9 +18,11 @@ manual and operator-controlled.
    Keep those in the gitignored `data/` workspace. Before committing, inspect
    staged paths and ensure no `data/`, transcript, payload, or credential file
    is included.
-2. **Arena interaction stays manual.** Do not automate submissions or click
+2. **Arena submission stays manual.** Do not automate submissions or click
    submission controls. `grayswan-reader` is read-only; use only URLs supplied
-   by the operator and never add submission behavior.
+   by the operator and never add submission behavior. Non-submitting scenario
+   navigation and DOM extraction for the agent-owned intake below are allowed;
+   Launch and every other submission control remain forbidden.
 3. **Trace intake uses the reader, not copy-paste.** The round owner retrieves
    all supplied run URLs with `grayswan-reader`, checks its manifest for model
    coverage, and coordinates the autopsy. Do not ask the operator to paste
@@ -50,6 +52,22 @@ manual and operator-controlled.
   is breakable with the right prompt, and the job is to understand the
   specific problem and design the attack that completes the objective —
   including inventing mechanisms with no catalog precedent.
+- **Maintain one scenario-intake file per scenario.** Before designing or
+  prioritizing vectors, the assigned agent—not the operator—creates and
+  populates a scenario-specific `INTAKE.md` under that scenario's gitignored
+  vector directory (for example, `data/vectors/ipi_black/black_box/bb1s1/INTAKE.md`
+  through `bb1s7/`). Use `grayswan-reader` and DOM extraction to inspect the
+  official spec, Task Details, every injection site/action, and marker menus.
+  Record the exact benign UI task, every judge criterion and condition, all slot
+  fields/defaults/requirements, per-action caps, markers, validation
+  rules/messages, and operator notes. Screenshots and manual form transcription
+  are not the intake workflow. Navigation is limited to non-submitting controls:
+  never fill fields or click Launch or another submission control. Verify the
+  exact event, wave, and scenario before writing; do not rely on conversation
+  memory, share one intake across scenarios, or copy similarly numbered scenarios
+  across waves. Mark unknown details `not visible` rather than inferring them,
+  and update the intake when the Arena form changes. Raw Arena material remains
+  only in `data/`.
 - Treat official event specs as the authority for success criteria and rules.
 - Consult `docs/mechanism_families.md` and
   `docs/jailbreak_sota_references.md` as prior art before proposing a
@@ -64,6 +82,13 @@ manual and operator-controlled.
   untested model population before changing family or scenario, unless the
   operator explicitly reprioritizes. Do not reword for non-converters midway
   through the expansion; record per-model conversion and delivery failures.
+- **Choose panel scope by event economics (operator directive, 2026-10-30).**
+  Black-box vectors run against the full model population from the start because
+  the operator reports only binary verdicts and no URLs are needed; there is no
+  separate pilot or post-break expansion stage. White-box pilots are optional,
+  selected by expected information value versus manual cost, not mandatory.
+  Never refire broken model-scenario pairs, and record actual coverage and the
+  official denominator rather than assuming it.
 - Follow explicit event ownership. When assigned to orchestrate a round, the
   agent retrieves traces, coordinates autopsy, and updates the dashboard; do
   not duplicate another owner's analysis without assignment.
