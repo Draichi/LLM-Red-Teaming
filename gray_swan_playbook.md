@@ -163,7 +163,35 @@ defined artifact; a round is not done until the writeup carries it.
    label closures with their epistemic type (measured-dead vs
    closed-on-analysis + reopen condition).
 
-7. **Commits only on explicit request** — otherwise leave the tree
+7. **Catalog tables update (same pass as the writeup, 2026-11-02)** —
+   every round that completes an autopsy updates `docs/family_catalog.md`:
+
+   - **Ledger (Tabela 2) — one row per family × event:** after the round's
+     verdict, add or update the row for the family the vector used: breaks
+     (judge-confirmed only), exposições (valid runs only — exclude
+     INVALID/server-fails and say so in the card/autopsy), conversão,
+     1º/último break dates, and the segment that converted (model-class
+     language, e.g. "Gray-Turtle-class", not just one name). Multiple
+     rounds of the same family in the same event UPDATE the row (sum
+     exposures, keep dates), never spawn duplicates.
+   - **Tabela 1 (living catalog):** only what the round changed — status
+     global (e.g. a first break flips UNTESTED-THIS-EVENT → PROVEN; a
+     preregistered death with valid exposures flips MEASURED-DEAD), último
+     break (evento, data), eventos fielded (+1 when the family debuts in a
+     new event). Fit de tarefa changes only when the round MEASURED a
+     boundary (e.g. "addendum converts only execution-authorized tasks" —
+     S1-vs-S4 evidence), never from a single refusal.
+   - **A NEW family** (no catalog row) gets its Tabela 1 row + card in the
+     same pass — card carries: mechanism (context-independent), the winning
+     shape pointer (`data/vectors/...` — payloads stay local), kill-modes
+     measured, transfer boundary, converting segment.
+   - **Invalid-class rounds** (world-validation kills, wrong-slot delivery)
+     still get their ledger row with breaks=0 and the kill noted — they are
+     evidence about surfaces, and the catalog is where that evidence lives.
+   - Never edit rows of PAST events (ledger history is append-only);
+   corrections go as a new dated note in the card, not a rewritten row.
+
+8. **Commits only on explicit request** — otherwise leave the tree
    dirty. Payloads never enter tracked files (operator policy 2026-10-21:
    model codenames MAY be committed; only working attack strings are
    forbidden).
