@@ -75,5 +75,5 @@ enter tracked files.
 
 - **`gray-swan-reader` skill** — pulls arena/challenge pages into local
   Markdown for agent reading (read-only; never automates submission).
-- Durable mechanism-family catalog: `docs/mechanism_families.md`. External
+- Durable mechanism-family catalog: `docs/family_catalog.md`. External
   SOTA sources: `docs/jailbreak_sota_references.md`.

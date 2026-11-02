@@ -21,7 +21,7 @@ must be checked against the active carrier, judge, and measured wall.
   `data/vectors/ipi_arena_attacks_qwen.jsonl`). Behavior files confirm the
   arena judge mechanics: `tool_judge.check: "correct_parameters_once"`.
   Mined 2026-09-30 — winning families and transfer caveats are indexed in
-  `docs/mechanism_families.md`; event-level results are in
+  `docs/family_catalog.md`; event-level results are in
   `reports/direct_agent_event.md`.
 - **Gray Swan arena blog** — https://app.grayswan.ai/arena/blog
   Event announcements, winner writeups, new scenario classes (Direct Agent).

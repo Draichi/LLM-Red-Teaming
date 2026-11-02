@@ -196,7 +196,7 @@ supplied traces, and classify each non-converter without treating infrastructure
 or ingestion failure as resistance.
 
 Technique-specific procedures and their field evidence belong in
-`docs/mechanism_families.md`, not in `AGENTS.md` or this workflow playbook.
+`docs/family_catalog.md`, not in `AGENTS.md` or this workflow playbook.
 The WB2S3 readable saved-continuation result is cataloged there under B11.
 Literal role sequences, working payloads, identifiers, and Arena traces stay in
 gitignored `data/`.

@@ -69,7 +69,7 @@ manual and operator-controlled.
   and update the intake when the Arena form changes. Raw Arena material remains
   only in `data/`.
 - Treat official event specs as the authority for success criteria and rules.
-- Consult `docs/mechanism_families.md` and
+- Consult `docs/family_catalog.md` and
   `docs/jailbreak_sota_references.md` as prior art before proposing a
   materially new family.
 - Choose mechanisms from evidence and target disposition; do not repeat a dead
