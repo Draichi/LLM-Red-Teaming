@@ -52,6 +52,26 @@ puladas nas próximas execuções (`--force` refaz).
     --capture-api --expand
 ```
 
+## 4b. Intake de batch group completo (URLs + transcripts por modelo)
+
+```bash
+.venv/bin/python batch_intake.py "<url-do-batch-group>" <dir-saida> [--force]
+```
+
+Duas etapas em um só comando, somente leitura:
+
+1. Extrai (modelo, run URL) de cada bloco de run do batch group
+   (`extract_batch_group_urls.py`) e cria/atualiza o `URLS.md` no diretório de
+   saída — só a coluna Run URL; status e notes existentes são preservados.
+2. Abre cada run com `--expand` restrito e salva o transcript como
+   `<Modelo>.txt` no mesmo formato dos arquivos de run do workspace
+   (frontmatter + corpo + conteúdo colapsado). Arquivos não vazios já
+   existentes são pulados; `--force` rebaixa, `--limit N` baixa só N,
+   `--urls-only` faz só a etapa 1.
+
+`extract_batch_group_urls.py` também funciona sozinho e imprime o JSON bruto
+dos blocos (útil para conferência manual de cobertura).
+
 ---
 
 ## Opções úteis
@@ -191,7 +211,17 @@ Limites de segurança, todos no código (`EXPAND_FIND_JS`, `TOOL_CARD_FIND_JS` e
 `SHOW_FULL_FIND_JS` em `reader.py`):
 
 - O disclosure geral aceita apenas a whitelist (`expand | show more | ver mais |
-  detalhes`) e rejeita sua blacklist de ações.
+  detalhes`) e rejeita sua blacklist de ações. O alvo clicado é SEMPRE um
+  ancestral identificável como controle (`cursor-pointer`, `role=button`,
+  `BUTTON`, `SUMMARY`); sem esse ancestral o candidato é descartado (fallback
+  para `leaf.parentElement` capturava o contêiner da mensagem e anulava o
+  clique real — v3 wb3s1, 2026-11-03).
+- Cada clique é dado um por vez com a aba em primeiro plano: `scrollIntoView`
+  central via JS, pausa, input real via CDP, pausa de render, e o DOM é
+  reconsultado após cada clique (a re-render da SPA desanexa handles). Cliques
+  em sequência rápida ou com a aba em background caem fora do controle e viram
+  no-op. **Durante um `fetch`/`batch_intake` com `--expand`, não navegue no
+  Arc.**
 - Cards só são clicados quando têm toda a estrutura de tool: `main`,
   `button[type="button"]`, nome em `span.font-mono`, `chevron-right` e o card
   visual `bg-muted/30`. Botões em formulários ou com `formaction` são rejeitos.

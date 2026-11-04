@@ -74,8 +74,13 @@ EXPAND_FIND_JS = """
             }
             target = target.parentElement; hops++;
         }
-        const el = clickable || leaf.parentElement;
-        if (!el) continue;
+        // Sem ancestral clicavel identificado: pula. O fallback antigo
+        // (leaf.parentElement) pegava o CONTAINER DA MENSAGEM quando o leaf
+        // era um div pai do disclosure (innerText combinado "Used N tools /
+        // Expand to see details"), e o dedupe por contains() descartava o
+        // botao real -> clique morto em 100% das runs.
+        if (!clickable) continue;
+        const el = clickable;
         if (el.closest('[data-gsr-expanded]')) continue;  // já clicado nesta visita
         const et = (el.innerText || '').trim();
         if (banned.test(et)) continue;              // contêiner não pode citar ação
@@ -324,36 +329,52 @@ def attach_api_capture(page, out_dir):
     page.on("response", on_response)
 
 
+def _scroll_click(page, elh, settle_ms=800):
+    """Clica um elemento renderizado com input real, de forma confiavel.
+
+    O disclosure das runs da Arena fica em lista dentro de conteiner de
+    scroll: sem scrollIntoView central o clique por coordenada cai fora do
+    botao (centro vazio/overlay) e o app nao expande — o clique "sucede" do
+    lado do Playwright mas e um no-op no DOM. Por isso: scroll central via
+    JS, pausa curta, input real via CDP, pausa de render.
+    """
+    elh.evaluate("el => el.scrollIntoView({block: 'center'})")
+    page.wait_for_timeout(400)
+    elh.click(timeout=5_000)
+    page.wait_for_timeout(settle_ms)
+
+
 def expand_controls(page, passes=2):
     """Clique restrito (autorizado 2026-10-22): expande disclosure controls.
 
-    Encontra alvos com EXPAND_FIND_JS e clica via Playwright (input real, já
-    que o app filtra evento sintético). 1 clique por controle, máx. 2 passadas
-    para pegar controles que só aparecem depois do 1º. Best-effort.
+    Encontra alvos com EXPAND_FIND_JS e clica um por vez via _scroll_click,
+    reconsultando o DOM apos cada clique (a re-render da SPA pode desanexar
+    os demais handles). 1 clique por controle, máx. 2 passadas para pegar
+    controles que só aparecem depois do 1º. Best-effort.
     """
     total = 0
     for _ in range(passes):
-        try:
-            arr = page.evaluate_handle(EXPAND_FIND_JS)
-            count = arr.evaluate("els => els.length")
-        except Exception:
-            return total
-        if not count:
-            break
-        for i in range(count):
+        clicked = 0
+        for _ in range(30):
             try:
-                elh = arr.get_property(str(i))
+                arr = page.evaluate_handle(EXPAND_FIND_JS)
+                elh = arr.get_property("0").as_element()
+                if elh is None:
+                    break
                 elh.evaluate("el => el.setAttribute('data-gsr-expanded', '1')")
-                elh.click(timeout=3_000)  # input real: mesmo elemento, sem vizinho
+                _scroll_click(page, elh)
                 elh.dispose()
+                clicked += 1
                 total += 1
             except Exception:
-                pass  # alvo pode ter saído do DOM após re-render; segue
-        page.wait_for_timeout(1_500)  # render do que acabou de abrir
-        try:
-            arr.dispose()
-        except Exception:
-            pass
+                break  # alvo falhou; próxima passada reconsulta o DOM
+            finally:
+                try:
+                    arr.dispose()
+                except Exception:
+                    pass
+        if not clicked:
+            break
     if total:
         page.wait_for_timeout(2_000)  # render final
     return total
@@ -369,15 +390,12 @@ def _expand_one_at_a_time(page, find_js, marker, limit):
                 break
             try:
                 elh.evaluate(f"el => el.setAttribute('{marker}', '1')")
-                elh.click(timeout=3_000)
+                _scroll_click(page, elh)
                 total += 1
-                page.wait_for_timeout(150)
             except Exception:
-                pass
+                break  # reconsulta o DOM na próxima iteração
         finally:
             handle.dispose()
-    if total:
-        page.wait_for_timeout(500)
     return total
 
 
@@ -401,6 +419,14 @@ def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selecto
         if capture_api:
             attach_api_capture(page, out_dir)
         goto(page, url, settle)
+        if expand:
+            # A aba precisa estar em primeiro plano para o input real de
+            # clique ser confiavel (aba em background sofre throttling e o
+            # operador navegando pode roubar o foco no meio da sequencia).
+            try:
+                page.bring_to_front()
+            except Exception:
+                pass
         if wait_selector:
             try:
                 page.wait_for_selector(wait_selector, timeout=15_000)
