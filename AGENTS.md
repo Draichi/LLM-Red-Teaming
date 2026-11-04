@@ -94,6 +94,13 @@ manual and operator-controlled.
   "over" — not in chat, dashboards, writeups, or memory. The operator owns
   every stop decision; records describe firing state, never verdicts of
   ending.
+- **Step back from the funnel (operator directive, 2026-11-04).** When a
+  funnel stops converting — repeated rounds with zero movement at the
+  measured gates — do not keep iterating variants inside the same axis.
+  Take two steps back and actively search for alternatives TO the funnel
+  itself: different critical path, different scenario, different surface,
+  different objective framing. Report the alternatives found alongside any
+  next in-funnel vector.
 - **Attack forms are unlimited (operator directive, 2026-11-02).** There is no
   fixed supply of families, vectors, or mechanisms. Measured dead-ends retire
   one shape, never the scenario; the standing job is to engineer NEW ways to

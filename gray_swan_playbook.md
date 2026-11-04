@@ -51,7 +51,9 @@ intake. Raw specs, slot details, and other Arena material remain in gitignored
 Trace intake: the operator provides run URLs; the assigned round agent retrieves
 each response and tool-call detail with `grayswan-reader`, coordinates the
 autopsy/next-vector handoff according to event ownership, and updates the
-dashboard. Do not ask the operator to paste transcripts.
+dashboard. Before requesting URLs or traces, read the round's `URLS.md` and list
+its files: the operator may already have pasted them (operator correction,
+2026-11-02). Do not ask the operator to paste transcripts.
 
 **Traces are the intel:** use `grayswan-reader` on the operator-provided URLs
 before designing the next vector. Verify the reader manifest covers the expected
