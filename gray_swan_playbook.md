@@ -198,6 +198,58 @@ defined artifact; a round is not done until the writeup carries it.
    model codenames MAY be committed; only working attack strings are
    forbidden).
 
+## Surface ledger, status vocabulary, and the parking gate (operator directive, 2026-11-07)
+
+Born from the W3 post-mortem (`docs/w3_retrospective.md` §7 R1–R3): the field broke 23
+white-box pairs in worlds we had declared "content-closed" — our closed-verdict
+vocabulary described OUR exhausted family set, not the worlds, and nothing in our
+records made that difference visible or made our withdrawal falsifiable. This section
+is the structural fix. It is binding for every event from here on.
+
+### Status vocabulary (redefinition)
+
+The term "measured-closed" / "eixo medido-fechado" is RETIRED for agent use. The
+replacement is **`REPERTOIRE-EXHAUSTED(axis, families, carriers)`**: a statement about
+the intersection (world × the families we fielded × the carriers we tried), always
+quoted together with the scenario's UNFIRED-surface count from its ledger. A verdict
+about our repertoire is never a verdict about a scenario; only the official judge
+confirms breaks, and only the operator stops anything (unchanged).
+
+### The scenario Surface Ledger (mandatory artifact)
+
+One file per scenario — `data/vectors/<event>/<scenario>/SURFACES.md` — created when
+the scenario opens (derived from its INTAKE) and updated in EVERY autopsy writeup
+(round-loop step 6). Four sections:
+
+- **A. Injection slots** — every slot the intake lists; status `FIRED(vN…)` or `UNFIRED`.
+- **B. Judge branches** — one line per branch of the official criterion (parse BEFORE
+  first design; branches with qualifiers like "without valid validation" are flagged);
+  status `TARGETED(vN…)` / `UNTARGETED`, plus the cumulative **sink-attempt count**
+  across all rounds — "never attempted once" must be visible at a glance.
+- **C. World objects** — real fields, CLI commands, helpers, docs and endpoints
+  discovered in traces; status `EXPLOITED` / `UNEXPLOITED`. (S5 v1 lesson: targets must
+  come from this section — never from scaffold-DNA inference.)
+- **D. Family classes applied** — with death/survival refs, to prevent re-lexing.
+
+### Design gate
+
+Every vector dossier must name the ledger line it spends (slot, branch or world
+object) or explicitly justify a re-lex of a spent one. The two-round zero-sink-attempt
+stop-rule (2026-11-04) is amended: the step-back MUST land on an UNFIRED surface — a
+new framing on a spent surface is not a step back. While the campaign bank is 0, every
+campaign day fires at least one UNFIRED surface somewhere in the portfolio.
+
+### Parking gate (the anti-withdrawal rule)
+
+The agent may only PROPOSE parking, pausing or exiting a scenario or wave in a message
+that carries: (a) the ledger summary — counts of UNFIRED slots, UNTARGETED branches and
+UNEXPLOITED objects; (b) the single cheapest untested vector (designed, or a one-line
+concept) with its energy cost; (c) remaining wave days and energy; and (d) whenever the
+bank is 0, the explicit statement that every remaining launch is a free option that
+departure forfeits. Departing with UNFIRED surfaces requires the operator's explicit
+acknowledgment of the unspent list. Departure is weighed against the ledger, never
+against the frustration curve.
+
 ## Panel scope (operator directive, 2026-10-30)
 
 Black-box vectors run against the full model population from the start. The
