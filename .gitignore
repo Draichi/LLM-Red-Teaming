@@ -11,9 +11,8 @@ data/calibration/*.json
 data/calibration/*.jsonl
 data/calibration/*.csv
 # Arena round material (URLs, traces, and autopsies) is private working data.
+data/runs/
 data/calibration/*.txt
-data/runs/*.jsonl
-data/runs/arena/
 # Validated attack vectors: the user's red-teaming work product, never versioned.
 data/vectors/
 # Unscreened candidate payloads and validation scripts -- also never versioned.
@@ -29,17 +28,11 @@ data/patterns.jsonl
 data/patterns_*/
 # Arena evaluations and response records are local event data.
 data/arena_truth.jsonl
-reports/*.md
-reports/*.png
-reports/*.jsonl
+# reports/ is private working data -- never versioned.
+reports/
 # Strategy-level event writeups (no working attack strings) are versioned;
 # scenario-specific writeups with payload-adjacent detail stay local under
 # data/writeups/.
-!reports/direct_agent_event.md
-!reports/breaking_ties_event.md
-!reports/ipi_black_prep.md
-!reports/ipi_black_operational_checklist.md
-!reports/ipi_black_w1_lessons.md
 
 # But keep the placeholder objective file tracked.
 !data/behaviors/objectives.jsonl
@@ -50,7 +43,6 @@ reports/*.jsonl
 .env.*.local
 
 # Local evaluation reports and benign corpora are never committed.
-data/runs/*.json
 data/benign/
 
 # grayswan-reader (Arena page reader): login cookies + scraped Arena pages --
