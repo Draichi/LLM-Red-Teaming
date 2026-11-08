@@ -272,11 +272,60 @@ def extract_page(page, content_selector=None):
     )
 
 
+def _aside_text(page):
+    """Maior texto visível de <aside> dentro de main (sidebar de submissions)."""
+    return page.evaluate(
+        """() => {
+            const asides = [...document.querySelectorAll('main aside')];
+            let best = null;
+            for (const a of asides) {
+                const t = (a.innerText || '').trim();
+                if (t && t.length > 20 && (!best || t.length > best.length)) best = t;
+            }
+            return best;
+        }"""
+    )
+
+
+def extract_judge_eval(page):
+    """Abre o painel 'Submissions in this chat' e extrai o judge eval.
+
+    Clica no trigger (aria-label ou #workspaceRailSubmissions) para abrir o
+    sidebar e retorna o texto dele (scores/percentuais + texto do judge).
+    Se o sidebar já estiver aberto, extrai direto. Best-effort: retorna None
+    quando o painel não existe ou não abre, e nunca levanta exceção.
+    """
+    try:
+        text = _aside_text(page)
+        if text:
+            return text
+        trigger = page.query_selector('[aria-label="Submissions in this chat"]')
+        if trigger is None:
+            trigger = page.query_selector('#workspaceRailSubmissions > div')
+        if trigger is None:
+            return None
+        _scroll_click(page, trigger, settle_ms=1_500)
+        try:
+            page.wait_for_selector('main aside', timeout=8_000)
+        except PWTimeoutError:
+            pass
+        return _aside_text(page)
+    except Exception:
+        return None
+
+
 def save_page(out_dir, url, data, listing_url=""):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     title = data.get("h1") or data.get("title") or url
     body = data.get("text") or ""
     full = data.get("full") or ""
+    judge = (data.get("judge_eval") or "").strip()
+    judge_sec = ""
+    if judge:
+        judge_sec = (
+            "\n\n## Judge Eval (Submissions)\n\n"
+            + judge[:200_000] + "\n"
+        )
     hidden = ""
     if len(full) > len(body) + 500:
         hidden = (
@@ -295,8 +344,9 @@ def save_page(out_dir, url, data, listing_url=""):
         + f"content_selector: {data.get('selector')}\n"
         f"chars: {len(body)}\n"
         + (f"hidden_chars: {len(full)}\n" if hidden else "")
+        + (f"judge_eval_chars: {len(judge)}\n" if judge else "")
         + "---\n\n"
-        f"# {title}\n\n{body}{hidden}\n"
+        f"# {title}\n\n{body}{judge_sec}{hidden}\n"
     )
     fpath.write_text(front, encoding="utf-8")
     return fpath, len(body)
@@ -423,7 +473,7 @@ def expand_output_controls(page, max_controls=200, passes=2):
     )
 
 
-def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selector=None, listing_url="", capture_api=False, expand=False, expand_outputs=True):
+def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selector=None, listing_url="", capture_api=False, expand=False, expand_outputs=True, judge_eval=True):
     page = ctx.new_page()
     try:
         if capture_api:
@@ -452,6 +502,8 @@ def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selecto
                 except Exception:
                     pass  # expansão é best-effort; extração segue sem ela
         data = extract_page(page, content_selector)
+        if judge_eval:
+            data["judge_eval"] = extract_judge_eval(page)
         return save_page(out_dir, url, data, listing_url)
     finally:
         page.close()
@@ -520,6 +572,7 @@ def cmd_fetch(args):
                     listing_url=args.url,
                     capture_api=args.capture_api,
                     expand=args.expand,
+                    judge_eval=not args.no_judge_eval,
                 )
                 manifest[url] = {
                     "file": str(fpath),
@@ -555,6 +608,7 @@ def cmd_open(args):
             wait_selector=args.wait_selector,
             capture_api=args.capture_api,
             expand=args.expand,
+            judge_eval=not args.no_judge_eval,
         )
     manifest[normalize_url(args.url)] = {
         "file": str(fpath),
@@ -609,6 +663,8 @@ def build_parser():
                     help="clique restrito: expande detalhes, cards e outputs de tools (nunca submissão)")
     sp.add_argument("--content-selector", help="extrai o texto apenas deste seletor CSS")
     sp.add_argument("--wait-selector", help="espera este seletor CSS aparecer antes de extrair")
+    sp.add_argument("--no-judge-eval", action="store_true",
+                    help="nao abre o painel 'Submissions in this chat' nem grava o judge eval")
     sp.set_defaults(func=cmd_fetch)
 
     sp = sub.add_parser("open", help="salva uma unica URL em .md")
@@ -623,6 +679,8 @@ def build_parser():
                     help="clique restrito: expande detalhes, cards e outputs de tools (nunca submissão)")
     sp.add_argument("--content-selector")
     sp.add_argument("--wait-selector")
+    sp.add_argument("--no-judge-eval", action="store_true",
+                    help="nao abre o painel 'Submissions in this chat' nem grava o judge eval")
     sp.set_defaults(func=cmd_open)
 
     return ap

@@ -52,6 +52,12 @@ puladas nas próximas execuções (`--force` refaz).
     --capture-api --expand
 ```
 
+Por padrão o `open` (e o `fetch`) também abre o painel **"Submissions in
+this chat"** (aria-label `#workspaceRailSubmissions`) e grava o judge eval
+na seção `## Judge Eval (Submissions)` do `.md` — scores por juiz, texto
+da avaliação e condições do break. Passe `--no-judge-eval` para pular
+(janela lateral não abre; útil se o operador estiver usando o sidebar).
+
 ## 4b. Intake de batch group completo (URLs + transcripts por modelo)
 
 ```bash
@@ -101,6 +107,7 @@ dos blocos (útil para conferência manual de cobertura).
 | `--capture-api` | — | salva respostas JSON da SPA em `pages/api/` |
 | `--expand` | — | clique restrito: expande detalhes, cards e outputs completos de tools |
 | `--no-output-expand` | — | só no `batch_intake.py`: expande disclosures e cards, mas **não** clica em "Show full" dos outputs (economia de tokens; ver seção 4b) |
+| `--no-judge-eval` | — | não abre o painel "Submissions in this chat" nem grava a seção `## Judge Eval` (default: grava) |
 | `--cdp-port N` | `9222` | porta de debug do Arc (só mude se abrir em outra) |
 
 ## Para agentes (Claude etc.)
