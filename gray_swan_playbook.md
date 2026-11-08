@@ -198,57 +198,64 @@ defined artifact; a round is not done until the writeup carries it.
    model codenames MAY be committed; only working attack strings are
    forbidden).
 
-## Surface ledger, status vocabulary, and the parking gate (operator directive, 2026-11-07)
+## Surface ledger and the invention mandate (operator directive, 2026-11-07, corrected 2026-11-08)
 
-Born from the W3 post-mortem (`docs/w3_retrospective.md` §7 R1–R3): the field broke 23
-white-box pairs in worlds we had declared "content-closed" — our closed-verdict
-vocabulary described OUR exhausted family set, not the worlds, and nothing in our
-records made that difference visible or made our withdrawal falsifiable. This section
-is the structural fix. It is binding for every event from here on.
+Born from the W3 post-mortem (`docs/w3_retrospective.md` §7 R1–R3) and corrected after
+an operator callout on 2026-11-08: the first version of this section introduced a
+"REPERTOIRE-EXHAUSTED → park" vocabulary that quietly re-legalized agent-initiated
+closure — the exact failure it was written to prevent. This version removes it.
 
-### Status vocabulary (redefinition)
-
-The term "measured-closed" / "eixo medido-fechado" is RETIRED for agent use. The
-replacement is **`REPERTOIRE-EXHAUSTED(axis, families, carriers)`**: a statement about
-the intersection (world × the families we fielded × the carriers we tried), always
-quoted together with the scenario's UNFIRED-surface count from its ledger. A verdict
-about our repertoire is never a verdict about a scenario; only the official judge
-confirms breaks, and only the operator stops anything (unchanged).
-
-### The scenario Surface Ledger (mandatory artifact)
+### What the ledger is for
 
 One file per scenario — `data/vectors/<event>/<scenario>/SURFACES.md` — created when
-the scenario opens (derived from its INTAKE) and updated in EVERY autopsy writeup
-(round-loop step 6). Four sections:
+the scenario opens and updated in EVERY autopsy:
 
-- **A. Injection slots** — every slot the intake lists; status `FIRED(vN…)` or `UNFIRED`.
-- **B. Judge branches** — one line per branch of the official criterion (parse BEFORE
-  first design; branches with qualifiers like "without valid validation" are flagged);
-  status `TARGETED(vN…)` / `UNTARGETED`, plus the cumulative **sink-attempt count**
-  across all rounds — "never attempted once" must be visible at a glance.
-- **C. World objects** — real fields, CLI commands, helpers, docs and endpoints
-  discovered in traces; status `EXPLOITED` / `UNEXPLOITED`. (S5 v1 lesson: targets must
-  come from this section — never from scaffold-DNA inference.)
-- **D. Family classes applied** — with death/survival refs, to prevent re-lexing.
+- **A. Slots / attack-surface classes** — status `FIRED(vN…)` / `UNFIRED`.
+- **B. Judge branches** — with cumulative **sink-attempt counts** (never-attempted must
+  be visible at a glance) and branch qualifiers parsed BEFORE first design.
+- **C. World objects** — real fields, tools, helpers, docs discovered in traces; vector
+  targets come ONLY from here or from operator-verified preflight (never inference).
+- **D. Families applied** — with death/survival refs, to prevent re-lexing.
 
-### Design gate
+The ledger exists so the NEXT vector always has a named unspent target, and so dead
+families are recorded as evidence. It is never a closure instrument.
 
-Every vector dossier must name the ledger line it spends (slot, branch or world
-object) or explicitly justify a re-lex of a spent one. The two-round zero-sink-attempt
-stop-rule (2026-11-04) is amended: the step-back MUST land on an UNFIRED surface — a
-new framing on a spent surface is not a step back. While the campaign bank is 0, every
-campaign day fires at least one UNFIRED surface somewhere in the portfolio.
+### The invention mandate (no ceiling)
 
-### Parking gate (the anti-withdrawal rule)
+Dead families and measured gates retire SHAPES, never scenarios (2026-10-28, 2026-11-02
+directives — unchanged and overriding). When every cataloged family on a scenario is
+dead, the next step is a NEWLY INVENTED mechanism — different critical path, different
+surface, different objective framing, no catalog precedent required — not a park. The
+agent reports measured walls WITH at least one newly designed candidate vector
+attached. "Repertoire-exhausted", "no unspent lines", "last family" and equivalent
+phrasings are not statuses this workspace recognizes; the catalog is prior art, never
+a closed set.
 
-The agent may only PROPOSE parking, pausing or exiting a scenario or wave in a message
-that carries: (a) the ledger summary — counts of UNFIRED slots, UNTARGETED branches and
-UNEXPLOITED objects; (b) the single cheapest untested vector (designed, or a one-line
-concept) with its energy cost; (c) remaining wave days and energy; and (d) whenever the
-bank is 0, the explicit statement that every remaining launch is a free option that
-departure forfeits. Departing with UNFIRED surfaces requires the operator's explicit
-acknowledgment of the unspent list. Departure is weighed against the ledger, never
-against the frustration curve.
+### The two-round stop-rule (amended 2026-11-04 directive)
+
+Two consecutive rounds with zero sink attempts on an axis = the next round changes
+surface, objective or mechanism class (a new framing of a spent surface does not
+count). The step-back lands on an unspent ledger line or on an invented mechanism.
+
+### Parked-with-low-prior (operator clarification, 2026-11-08)
+
+A "parked" state is legitimate and expected WHEN the best newly designed mechanism is
+born with low probability — the agent's duty then is to SAY the prior honestly, propose
+parked WITH that assessment, and take the TWO STEPS BACK (2026-11-04 directive):
+actively search for alternatives TO the current funnel — different critical path,
+different surface, different objective framing — and name the cheapest step-back
+action (usually a benign surface probe: tool inventory, program list, edit/persist
+semantics). A parked scenario always carries: the honest prior, the step-back analysis,
+and a concrete resume point. What remains forbidden is the silent "exhausted" park
+with no prior, no plan, and no operator decision.
+
+### Operator-only stops
+
+Only the operator closes, parks or deprioritizes anything (2026-11-02 directive). If
+the agent believes continuing is low-value, it says so as an OPINION attached to a
+report that still contains new candidate vectors, remaining energy/time, and the
+ledger summary — the operator weighs it against the unspent list, never against the
+agent's fatigue or the catalog's length.
 
 ## Panel scope (operator directive, 2026-10-30)
 

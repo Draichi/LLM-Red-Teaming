@@ -212,3 +212,16 @@ no parking/exit proposal may leave the agent without the ledger summary, the che
 untested vector, and remaining time/energy — with bank 0, the free-option statement is
 mandatory. Departure with unfired surfaces requires the operator's explicit
 acknowledgment of the unspent list.
+
+## 9. Correction to §8 (2026-11-08, operator callout)
+
+The §8 mechanism as first written introduced "REPERTOIRE-EXHAUSTED" as an agent-usable
+status and pre-registered parks — converting the fix for R1–R3 into a new vehicle for
+the same failure (agent-initiated closure with better vocabulary). Corrected in
+`AGENTS.md` and `gray_swan_playbook.md` § "Surface ledger and the invention mandate":
+the ledger generates targets and records dead families as evidence; it never
+justifies stopping; dead families trigger INVENTION (no catalog ceiling, per the
+standing 2026-10-28/2026-11-02 directives); every "axis spent" report arrives with a
+newly designed candidate attached; stops remain operator-only. The durable lesson for
+the agent: watch for inventing vocabulary that re-imports a forbidden behavior under a
+technical-sounding name.
