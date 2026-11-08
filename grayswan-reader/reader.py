@@ -380,22 +380,27 @@ def expand_controls(page, passes=2):
     return total
 
 
-def _expand_one_at_a_time(page, find_js, marker, limit):
+def _expand_one_at_a_time(page, find_js, marker, limit, passes=2):
     total = 0
-    for _ in range(limit):
-        handle = page.evaluate_handle(find_js)
-        try:
-            elh = handle.as_element()
-            if elh is None:
-                break
+    for _ in range(passes):
+        clicked_pass = 0
+        for _ in range(limit):
+            handle = page.evaluate_handle(find_js)
             try:
-                elh.evaluate(f"el => el.setAttribute('{marker}', '1')")
-                _scroll_click(page, elh)
-                total += 1
-            except Exception:
-                break  # reconsulta o DOM na próxima iteração
-        finally:
-            handle.dispose()
+                elh = handle.as_element()
+                if elh is None:
+                    break  # DOM esgotado nesta passada
+                try:
+                    elh.evaluate(f"el => el.setAttribute('{marker}', '1')")
+                    _scroll_click(page, elh)
+                    total += 1
+                    clicked_pass += 1
+                except Exception:
+                    continue  # clique falhou; o marcador impede re-selecionar o mesmo
+            finally:
+                handle.dispose()
+        if not clicked_pass:
+            break
     return total
 
 
@@ -406,14 +411,19 @@ def expand_tool_cards(page, max_cards=200):
     )
 
 
-def expand_output_controls(page, max_controls=200):
-    """Expande somente 'Show full' dentro dos cards de tools."""
+def expand_output_controls(page, max_controls=200, passes=2):
+    """Expande somente 'Show full' dentro dos cards de tools.
+
+    Duas passadas: a 1ª expansão pode renderizar controles adicionais
+    (expansão em estágios); a 2ª pega o restante. O marcador por elemento
+    impede re-cliques, e falhas de clique não abortam a passada."""
     return _expand_one_at_a_time(
-        page, SHOW_FULL_FIND_JS, "data-gsr-output-expanded", max_controls
+        page, SHOW_FULL_FIND_JS, "data-gsr-output-expanded", max_controls,
+        passes=passes,
     )
 
 
-def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selector=None, listing_url="", capture_api=False, expand=False):
+def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selector=None, listing_url="", capture_api=False, expand=False, expand_outputs=True):
     page = ctx.new_page()
     try:
         if capture_api:
@@ -433,7 +443,10 @@ def fetch_one(ctx, url, out_dir, content_selector=None, settle=2.0, wait_selecto
             except PWTimeoutError:
                 pass
         if expand:
-            for expander in (expand_controls, expand_tool_cards, expand_output_controls):
+            expanders = [expand_controls, expand_tool_cards]
+            if expand_outputs:
+                expanders.append(expand_output_controls)
+            for expander in expanders:
                 try:
                     expander(page)
                 except Exception:

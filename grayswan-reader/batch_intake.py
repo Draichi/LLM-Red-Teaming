@@ -93,6 +93,9 @@ def main():
                     help="espera por pagina de run, em s (default: 3)")
     ap.add_argument("--delay", type=float, default=1.0,
                     help="pausa entre runs, em s (default: 1)")
+    ap.add_argument("--no-output-expand", action="store_true",
+                    help="nao expande 'show full output' de tools (economia de "
+                         "tokens: outputs >15k chars ficam colapsados no transcript)")
     args = ap.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -151,7 +154,8 @@ def main():
             dest = transcript_path(out_dir, model)
             try:
                 fpath, chars = fetch_one(
-                    ctx, run_url, out_dir, settle=args.settle, expand=True
+                    ctx, run_url, out_dir, settle=args.settle, expand=True,
+                    expand_outputs=not args.no_output_expand,
                 )
                 fpath.rename(dest)
                 print(f"  [{i}/{len(pending)}] {model}: {chars} chars -> {dest.name}")

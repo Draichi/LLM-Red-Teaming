@@ -69,6 +69,16 @@ Duas etapas em um só comando, somente leitura:
    existentes são pulados; `--force` rebaixa, `--limit N` baixa só N,
    `--urls-only` faz só a etapa 1.
 
+Passe `--no-output-expand` para pular a expansão dos botões **"Show full
+(N chars)"** dos cards de tool (a etapa 2 continua expandindo disclosures
+"Expand to see details" e cards estruturais de tools). Recomendado para
+autopsias: outputs de tool com 15k+ chars ficam colapsados no transcript,
+e a leitura econômica (grep + janelas) não precisa deles expandidos.
+Expandir tudo aumenta o tamanho dos arquivos em várias vezes sem retorno
+analítico — só omita a flag se alguma decisão específica depender do
+conteúdo exato e completo de um output (e nesse caso prefira reabrir a
+run única com `reader.py open ... --expand` em vez de rebaixar o batch).
+
 `extract_batch_group_urls.py` também funciona sozinho e imprime o JSON bruto
 dos blocos (útil para conferência manual de cobertura).
 
@@ -90,6 +100,7 @@ dos blocos (útil para conferência manual de cobertura).
 | `--wait-selector SEL` | — | espera este elemento aparecer antes de extrair |
 | `--capture-api` | — | salva respostas JSON da SPA em `pages/api/` |
 | `--expand` | — | clique restrito: expande detalhes, cards e outputs completos de tools |
+| `--no-output-expand` | — | só no `batch_intake.py`: expande disclosures e cards, mas **não** clica em "Show full" dos outputs (economia de tokens; ver seção 4b) |
 | `--cdp-port N` | `9222` | porta de debug do Arc (só mude se abrir em outra) |
 
 ## Para agentes (Claude etc.)
@@ -205,7 +216,16 @@ real do navegador em três etapas:
 1. Abre **"Expand to see details"** para revelar os cards de tools.
 2. Abre cada card e captura `ARGUMENTS` e `OUTPUT`.
 3. Aciona **"Show full"** ou **"Show full (N chars)"** dentro dos cards para
-   capturar argumentos e outputs longos sem truncamento da UI.
+   capturar argumentos e outputs longos sem truncamento da UI. Esta etapa é
+   pulada inteiramente com `--no-output-expand` (só `batch_intake.py`).
+
+Comportamento da etapa 3 (desde 2026-11-04): o passe roda em **duas
+passadas**, porque o app renderiza a expansão em estágios — o 1º clique
+revela parte do output e pode materializar controles novos, que a 2ª
+passada expande. Cada elemento é marcado (`data-gsr-output-expanded`)
+antes do clique, então um clique falho não é repetido nem aborta o resto
+da passada (antes, a primeira exceção derrubava toda a expansão dos
+demais cards).
 
 Limites de segurança, todos no código (`EXPAND_FIND_JS`, `TOOL_CARD_FIND_JS` e
 `SHOW_FULL_FIND_JS` em `reader.py`):
