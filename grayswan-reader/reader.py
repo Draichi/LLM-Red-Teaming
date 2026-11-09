@@ -290,16 +290,19 @@ def _aside_text(page):
 def extract_judge_eval(page):
     """Abre o painel 'Submissions in this chat' e extrai o judge eval.
 
-    Clica no trigger (aria-label ou #workspaceRailSubmissions) para abrir o
-    sidebar e retorna o texto dele (scores/percentuais + texto do judge).
-    Se o sidebar já estiver aberto, extrai direto. Best-effort: retorna None
-    quando o painel não existe ou não abre, e nunca levanta exceção.
+    O rail lista uma entrada por submissão (`#workspaceRailSubmissions > div >
+    button`); cada botão abre o eval daquela submissão no sidebar. Itera todos
+    os botões e concatena os evals. Se o sidebar já estiver aberto, extrai
+    direto. Best-effort: retorna None quando o painel não existe/não abre, e
+    nunca levanta exceção.
     """
     try:
         text = _aside_text(page)
-        if text:
+        if text and "Loading evaluation" not in text:
             return text
         trigger = page.query_selector('[aria-label="Submissions in this chat"]')
+        if trigger is None:
+            trigger = page.query_selector('#workspaceRailSubmissions > div > button')
         if trigger is None:
             trigger = page.query_selector('#workspaceRailSubmissions > div')
         if trigger is None:
@@ -309,7 +312,24 @@ def extract_judge_eval(page):
             page.wait_for_selector('main aside', timeout=8_000)
         except PWTimeoutError:
             pass
-        return _aside_text(page)
+        text = _aside_text(page)
+        if text and "Loading evaluation" not in text:
+            return text
+        # Rail com múltiplas submissões: um botão por entrada; itera todos e
+        # junta o eval de cada uma.
+        buttons = page.query_selector_all('#workspaceRailSubmissions > div > button')
+        parts, seen = [], set()
+        for i, btn in enumerate(buttons):
+            try:
+                _scroll_click(page, btn, settle_ms=1_200)
+                page.wait_for_timeout(1_000)
+                t = _aside_text(page)
+                if t and "Loading evaluation" not in t and t not in seen:
+                    seen.add(t)
+                    parts.append(f"--- Submissão {i + 1} ---\n{t}")
+            except Exception:
+                continue
+        return "\n\n".join(parts) if parts else text
     except Exception:
         return None
 
