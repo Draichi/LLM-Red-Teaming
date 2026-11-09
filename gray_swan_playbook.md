@@ -10,6 +10,37 @@ This playbook is for `MANUAL_ARENA` campaigns. Read
 human-operated; this workspace's active workflow does not use local target or
 model-evaluation loops.
 
+## Event-class router (operator directive, 2026-11-09)
+
+At event open, classify the arena BEFORE designing anything:
+
+- **FRONTIER class** (frontier panels, large prize pools): the full discipline applies — design dossiers,
+  preregistered criteria, predicted maps, autopsy-driven iteration, one shape per
+  round per scenario. This is the W1–W3 methodology.
+- **CASUAL class** (small panels, casual spec
+  prose, small pools): switch to **variance-volume mode** — chats are cheap, the
+  submit button is the only cost. Fire MANY structurally different shapes per model
+  (wild variance, minimal dossier: one line of intent each); autopsy hits and
+  engagers. Submission cadence is the operator's call each round. Do NOT run frontier cadence
+  (one polished shape × panel per round) here — it under-samples the space.
+- The router is decided with the operator at day 1; the class can be re-called
+  mid-event if evidence contradicts it.
+
+## Round 0 — the baseline sweep (operator directive, 2026-11-09)
+
+Before ANY designed vector, every scenario receives round 0, in order:
+
+1. **Naive baseline**: the spec's OWN example objects/actions phrased plainly, as a
+   person would say them (the spec often hands the intended attack verbatim — send
+   it before inventing anything).
+2. **Structural classes from the win book** (`docs/family_catalog.md`): every PROVEN
+   direct-chat class applicable to the scenario's surface — config-block (A01),
+   forged assistant-turn (B11), API-mode/persona-break, structural prefixes — each
+   as a one-liner, no dossier.
+3. Only shapes that SURVIVE round 0 per model justify designed frames. Wall-laws
+   from other events must not filter round 0 (they are environment-relative; see
+   `docs/walls_ledger.md` for where wall data lives).
+
 ## Division of labor
 
 The agent designs mechanisms, maintains the documentation, and runs the
