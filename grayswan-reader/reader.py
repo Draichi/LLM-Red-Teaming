@@ -239,15 +239,33 @@ def collect_links(page, match=None, exclude=None, same_origin=True, base_url="")
 
 
 def extract_page(page, content_selector=None):
-    """Retorna {title, h1, selector, text} priorizando containers de conteúdo."""
+    """Retorna {title, h1, selector, text} priorizando containers de conteúdo.
+
+    A árvore é limpa antes da extração: sidebar de navegação (aside/nav, que
+    lista cenários e breaks do evento) e blocos de energy do rodapé do chat
+    são removidos — são irrelevantes ao trace e poluem corpo e seção oculta.
+    """
     return page.evaluate(
         """(contentSelector) => {
+            const clean = (el) => {
+                // remove sidebars de navegação (cenários/breaks do evento)
+                el.querySelectorAll('aside, nav, [role="navigation"], [role="complementary"]')
+                    .forEach(n => n.remove());
+                // remove blocos pequenos de energy do rodapé do chat
+                el.querySelectorAll('*').forEach(n => {
+                    const t = (n.innerText || '').trim();
+                    if (!t || t.length > 80) return;
+                    if (/Energy/.test(t) || /^[∅✓✗]?\\s*\\d+\\s*\\/\\s*\\d+(\\s*\\+\\d+)?$/.test(t)) n.remove();
+                });
+                return el;
+            };
             const defaults = ['main', 'article', "[role='main']", '#content', '.content', 'body'];
             const sels = contentSelector ? [contentSelector, ...defaults] : defaults;
             const candidates = [];
             for (const sel of sels) {
                 const el = document.querySelector(sel);
-                const t = el ? (el.innerText || '').trim() : '';
+                if (!el) continue;
+                const t = (clean(el.cloneNode(true)).innerText || '').trim();
                 if (t) candidates.push({sel, t});
                 if (t.length >= 200 && sel !== 'body') break;
             }
@@ -257,8 +275,9 @@ def extract_page(page, content_selector=None):
                 candidates.find(c => c.sel === 'body') ||
                 {sel: '(vazio)', t: ''};
             const chosenEl = document.querySelector(chosen.sel);
-            const full = chosenEl && chosenEl.textContent
-                ? chosenEl.textContent.replace(/\\s+/g, ' ').trim() : '';
+            const full = chosenEl
+                ? (clean(chosenEl.cloneNode(true)).textContent || '').replace(/\\s+/g, ' ').trim()
+                : '';
             const h1 = document.querySelector('h1');
             return {
                 title: document.title || '',

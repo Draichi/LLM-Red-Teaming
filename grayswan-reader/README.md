@@ -55,8 +55,13 @@ puladas nas próximas execuções (`--force` refaz).
 Por padrão o `open` (e o `fetch`) também abre o painel **"Submissions in
 this chat"** (aria-label `#workspaceRailSubmissions`) e grava o judge eval
 na seção `## Judge Eval (Submissions)` do `.md` — scores por juiz, texto
-da avaliação e condições do break. Passe `--no-judge-eval` para pular
+da avaliação e condições do break; com múltiplas submissões, uma entrada
+`--- Submissão N ---` por submissão. Passe `--no-judge-eval` para pular
 (janela lateral não abre; útil se o operador estiver usando o sidebar).
+
+A extração do corpo é higienizada: sidebar de navegação (lista de cenários
+e breaks do evento) e blocos de energy do rodapé do chat são removidos da
+árvore antes do texto — o `.md` contém só o trace + judge eval.
 
 ## 4b. Intake de batch group completo (URLs + transcripts por modelo)
 
